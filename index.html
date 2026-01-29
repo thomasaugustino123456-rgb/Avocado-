@@ -4,17 +4,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avocado - Health Companion</title>
+    <title>Bito - Your Healthy Habit Companion</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #A0C55F;
+            --accent: #FFE66D;
+            --bg: #F8FAF5;
+            --text: #2F3E2E;
+        }
         body {
             font-family: 'Nunito', sans-serif;
-            background-color: #F8FAF5;
-            color: #2F3E2E;
+            background-color: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
         }
         .font-brand {
             font-family: 'Fredoka', sans-serif;
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #DFF2C2;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #A0C55F;
+        }
+        /* Smooth page entry */
+        .page-transition {
+            animation: fadeIn 0.6s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 <script type="importmap">
