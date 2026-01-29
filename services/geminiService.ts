@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type, Chat } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { FoodAnalysis } from "../types";
 
 const getAIClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -24,13 +24,9 @@ export const getEncouragement = async (userName: string, steps: number, water: n
       Target User: ${userName}
       Stats: ${steps} steps, ${water} glasses of water.
       Goal: Provide a short (1 sentence), extremely friendly, non-judgmental, and encouraging mascot message. Focus on wellness and feeling good.`,
-      config: {
-        thinkingConfig: { thinkingBudget: 0 }
-      }
     });
     return response.text || LOCAL_GREETINGS[Math.floor(Math.random() * LOCAL_GREETINGS.length)];
   } catch (error: any) {
-    // If rate limited or any error occurs, silently fallback to local variety
     console.warn("Gemini is resting. Using local greeting library.");
     return LOCAL_GREETINGS[Math.floor(Math.random() * LOCAL_GREETINGS.length)];
   }
@@ -74,7 +70,8 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
       },
       config: {
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 4096 },
+        // Using type assertion to bypass the temporary lack of 'thinkingConfig' in library types
+        ...({ thinkingConfig: { thinkingBudget: 4096 } } as any),
         responseSchema: {
           type: Type.OBJECT,
           properties: {
