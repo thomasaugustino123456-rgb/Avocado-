@@ -1,4 +1,3 @@
-
 {
   "name": "bito-health-companion",
   "private": true,
@@ -11,7 +10,6 @@
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
-    "@supabase/supabase-js": "^2.48.1",
     "firebase": "^10.8.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",

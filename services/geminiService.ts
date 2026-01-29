@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { FoodAnalysis } from "../types";
 
@@ -70,8 +69,6 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
       },
       config: {
         responseMimeType: "application/json",
-        // Using type assertion to bypass the temporary lack of 'thinkingConfig' in library types
-        ...({ thinkingConfig: { thinkingBudget: 4096 } } as any),
         responseSchema: {
           type: Type.OBJECT,
           properties: {
