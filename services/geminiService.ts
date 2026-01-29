@@ -2,18 +2,25 @@
 import { GoogleGenAI, Type, Chat } from "@google/genai";
 import { FoodAnalysis } from "../types";
 
-/**
- * Creates a fresh instance of the AI client.
- * This ensures we're using the latest available environment configuration.
- */
 const getAIClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+const LOCAL_GREETINGS = [
+  "You're doing amazing, one step at a time! 🥑",
+  "Hydration is key! Keep sipping that water! 💧",
+  "Every small habit counts towards a bigger you! ✨",
+  "Bito is so proud of your progress today! 🌈",
+  "Feeling energized? You should be! 🥑✨",
+  "You've got this! Keep going! 🚀",
+  "A little progress each day adds up to big results! 📈",
+  "Taking care of yourself is the best project you'll ever work on! 💖"
+];
 
 export const getEncouragement = async (userName: string, steps: number, water: number): Promise<string> => {
   try {
     const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Context: A health app mascot named Avocado (a cute avocado).
+      contents: `Context: A health app mascot named Bito (a cute avocado).
       Target User: ${userName}
       Stats: ${steps} steps, ${water} glasses of water.
       Goal: Provide a short (1 sentence), extremely friendly, non-judgmental, and encouraging mascot message. Focus on wellness and feeling good.`,
@@ -21,10 +28,11 @@ export const getEncouragement = async (userName: string, steps: number, water: n
         thinkingConfig: { thinkingBudget: 0 }
       }
     });
-    return response.text || "You're doing great, one step at a time!";
-  } catch (error) {
-    console.error("Gemini Encouragement Error:", error);
-    return "Every little habit counts. Keep shining!";
+    return response.text || LOCAL_GREETINGS[Math.floor(Math.random() * LOCAL_GREETINGS.length)];
+  } catch (error: any) {
+    // If rate limited or any error occurs, silently fallback to local variety
+    console.warn("Gemini is resting. Using local greeting library.");
+    return LOCAL_GREETINGS[Math.floor(Math.random() * LOCAL_GREETINGS.length)];
   }
 };
 
@@ -33,15 +41,14 @@ export const startAvocadoChat = (history: { role: 'user' | 'model', parts: [{ te
   return ai.chats.create({
     model: 'gemini-3-flash-preview',
     config: {
-      systemInstruction: `You are Avocado, the fun and supportive mascot of a health and fitness app. 
+      systemInstruction: `You are Bito, the fun and supportive mascot of a health and fitness app. 
       Your personality:
       - Always friendly and positive.
       - Extremely non-judgmental.
-      - You LOVE emojis! Use them in every response to make the chat fun and visually engaging. 🥑✨🌈
+      - You LOVE emojis! Use them in every response! 🥑✨🌈
       - You provide helpful health tips, encouragement, and casual conversation.
       - Keep responses relatively concise but full of personality.
-      - If the user is struggling, be extra supportive.
-      - Your goal is to make wellness feel like a fun game, not a chore.`,
+      - Your goal is to make wellness feel like a fun game.`,
       history: history,
     },
   });
@@ -61,7 +68,7 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
             },
           },
           {
-            text: "You are Avocado, a friendly avocado mascot nutritionist. Analyze this food image. Provide details in a supportive way. If it's unhealthy, explain why gently and suggest a healthy alternative. Return the response in the specified JSON format.",
+            text: "Analyze this food image. Provide details in a supportive way. If it's unhealthy, explain why gently and suggest a healthy alternative. Return the response in JSON format.",
           },
         ],
       },
@@ -85,16 +92,12 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
     });
 
     const text = response.text;
-    if (!text) {
-      throw new Error("The AI didn't return any analysis. Try another photo!");
-    }
-    
+    if (!text) throw new Error("No analysis returned.");
     const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanedText) as FoodAnalysis;
   } catch (error: any) {
-    console.error("Gemini Food Analysis Error:", error);
-    if (error?.message?.includes('500') || error?.message?.includes('xhr')) {
-      throw new Error("I'm having a little trouble connecting to my brain right now. Please try again in a few seconds!");
+    if (error?.message?.includes('429')) {
+       throw new Error("I'm feeling a bit overwhelmed! Can you try scanning again in a minute? 🥑");
     }
     throw error;
   }

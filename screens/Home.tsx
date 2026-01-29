@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, DailyLog, MealType } from '../types';
 import { Mascot } from '../components/Mascot';
 import { Footprints, Droplets, Plus, ChefHat, Sparkles } from 'lucide-react';
@@ -15,24 +15,48 @@ interface HomeProps {
 }
 
 export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWater, onUpdateSteps, onAddMealClick }) => {
-  const [encouragement, setEncouragement] = useState("Hi friend! I'm getting a special message ready for you... 🥑");
+  const [encouragement, setEncouragement] = useState("Hi friend! You're doing great! 🥑");
+  const lastFetchTime = useRef<number>(0);
+  const lastFetchStats = useRef({ steps: 0, water: 0 });
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const totalCalories = dailyLog.meals.reduce((acc, meal) => acc + meal.calories, 0);
   const progressPercent = Math.min(100, (totalCalories / user.dailyCalorieGoal) * 100);
 
+  // Smart Throttled Encouragement: Only fetch if stats change significantly OR 10 mins passed
   useEffect(() => {
-    const fetchMsg = async () => {
-      const msg = await getEncouragement(user.name, dailyLog.steps, dailyLog.waterGlasses);
-      setEncouragement(msg);
+    const now = Date.now();
+    const timeDiff = now - lastFetchTime.current;
+    const stepDiff = Math.abs(dailyLog.steps - lastFetchStats.current.steps);
+    const waterDiff = Math.abs(dailyLog.waterGlasses - lastFetchStats.current.water);
+
+    // Initial load OR major milestone (2k steps / 3 water) OR 10 minutes passed
+    const shouldFetch = lastFetchTime.current === 0 || stepDiff >= 2000 || waterDiff >= 3 || timeDiff > 600000;
+
+    if (shouldFetch) {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      
+      debounceTimer.current = setTimeout(async () => {
+        try {
+          const msg = await getEncouragement(user.name, dailyLog.steps, dailyLog.waterGlasses);
+          setEncouragement(msg);
+          lastFetchTime.current = Date.now();
+          lastFetchStats.current = { steps: dailyLog.steps, water: dailyLog.waterGlasses };
+        } catch (e) {
+          console.warn("Throttling fallback triggered.");
+        }
+      }, 1500);
+    }
+
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-    fetchMsg();
-  }, [dailyLog.steps, dailyLog.waterGlasses]);
+  }, [dailyLog.steps, dailyLog.waterGlasses, user.name]);
 
   const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner'];
 
   return (
     <div className="p-4 md:p-8 lg:p-12 space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Top Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-start">
         <div className="lg:col-span-7 space-y-8">
           <header className="flex justify-between items-center">
@@ -65,7 +89,6 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
             </div>
           </div>
 
-          {/* Daily Progress Card */}
           <div className="bg-white p-8 rounded-[48px] shadow-sm border border-gray-50 space-y-6 group cursor-default">
             <div className="flex justify-between items-end">
               <div className="space-y-1">
@@ -91,7 +114,6 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
           </div>
         </div>
 
-        {/* Quick Stats Grid */}
         <div className="lg:col-span-5 grid grid-cols-1 gap-6">
           <div className="bg-[#EBF7DA] p-8 rounded-[48px] shadow-sm space-y-6 relative overflow-hidden group hover:shadow-lg transition-all active:scale-[0.98]">
             <div className="flex justify-between items-center relative z-10">
@@ -133,7 +155,6 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
         </div>
       </div>
 
-      {/* Meal Summary Section */}
       <div className="space-y-8">
         <div className="flex justify-between items-end">
           <div className="space-y-1">
@@ -185,7 +206,6 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
                     </div>
                   )}
                 </div>
-                {/* Decoration */}
                 <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50 rounded-full -mr-12 -mt-12 opacity-0 group-hover:opacity-20 transition-opacity" />
               </div>
             );

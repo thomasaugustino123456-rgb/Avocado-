@@ -1,8 +1,14 @@
 
 import React, { useState, useRef } from 'react';
 import { User, Screen } from '../types';
-import { supabase } from '../services/supabase';
-import { Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight, Camera, Edit2, Check, X, User as UserIcon, Loader2 } from 'lucide-react';
+import { auth } from '../services/firebase';
+import { signOut } from "firebase/auth";
+import { persistenceService } from '../services/persistenceService';
+import { 
+  LogOut, User as UserIcon, Edit2, Check, X, ChevronRight, 
+  Bell, Shield, HelpCircle, Camera, Upload, Trash2, 
+  Target, Footprints, Droplets, Flame, Loader2
+} from 'lucide-react';
 
 interface ProfileProps {
   user: User;
@@ -12,213 +18,296 @@ interface ProfileProps {
 
 export const Profile: React.FC<ProfileProps> = ({ user, setUser, onNavigate }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [editForm, setEditForm] = useState<User>({ ...user });
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
-    setIsSaving(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session?.user) {
-      const { error } = await supabase.from('users').update({
-        name: editForm.name,
-        age: editForm.age,
-        weight_kg: editForm.weight,
-        height_cm: editForm.height,
-        goal: editForm.goal,
-        profile_pic: editForm.profilePic
-      }).eq('id', session.user.id);
-
-      if (!error) {
-        setUser(editForm);
-        setIsEditing(false);
-      } else {
-        alert("Error saving profile: " + error.message);
-      }
-    }
-    setIsSaving(false);
-  };
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
-
-  const handleCancel = () => {
-    setEditForm({ ...user });
+    await persistenceService.saveUser(editForm);
+    setUser(editForm);
     setIsEditing(false);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSignOut = () => signOut(auth);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditForm(prev => ({ ...prev, profilePic: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const downloadURL = await persistenceService.uploadProfilePicture(file);
+      const updatedUser = { ...user, profilePic: downloadURL };
+      setUser(updatedUser);
+      setEditForm(prev => ({ ...prev, profilePic: downloadURL }));
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Failed to upload photo. Please check your storage rules!");
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const menuItems = [
-    { icon: Bell, label: 'Notifications', value: 'Daily reminders', screen: 'notifications' as Screen },
-    { icon: Shield, label: 'Privacy & Security', value: 'Protected', screen: 'privacy' as Screen },
-    { icon: HelpCircle, label: 'Help Center', value: '24/7 Support', screen: 'help' as Screen },
-  ];
+  const handleDeletePhoto = async () => {
+    if (!confirm("Are you sure you want to delete your profile picture?")) return;
+    setIsUploading(true);
+    try {
+      await persistenceService.deleteProfilePicture();
+      const updatedUser = { ...user, profilePic: '' };
+      setUser(updatedUser);
+      setEditForm(prev => ({ ...prev, profilePic: '' }));
+    } catch (err) {
+      console.error("Delete error:", err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
-    <div className="p-6 pb-32 space-y-8 animate-in fade-in duration-500 max-w-2xl mx-auto">
-      <header className="flex justify-between items-center">
-        <h2 className="text-3xl font-brand font-bold text-[#2F3E2E]">
-          {isEditing ? 'Edit Your Profile' : 'Your Profile'}
-        </h2>
+    <div className="p-4 md:p-8 lg:p-12 space-y-8 max-w-4xl mx-auto pb-32 animate-in fade-in duration-500">
+      <header className="flex justify-between items-center px-2">
+        <h2 className="text-4xl font-brand font-bold text-[#2F3E2E]">Profile Settings</h2>
         {!isEditing ? (
           <button 
-            onClick={() => setIsEditing(true)}
-            className="p-3 bg-white rounded-2xl shadow-sm text-[#A0C55F] hover:bg-[#F8FAF5] transition-all flex items-center gap-2 font-bold"
+            onClick={() => { setIsEditing(true); setEditForm({ ...user }); }} 
+            className="px-6 py-3 bg-[#A0C55F] text-white rounded-2xl shadow-lg shadow-[#A0C55F]/20 font-bold flex items-center gap-2 hover:bg-[#8eb052] transition-all"
           >
-            <Edit2 size={20} />
-            <span className="hidden sm:inline">Edit</span>
+            <Edit2 size={20} /> Edit Details
           </button>
         ) : (
           <div className="flex gap-2">
             <button 
-              onClick={handleCancel}
-              className="p-3 bg-white rounded-2xl shadow-sm text-gray-400 hover:bg-gray-50 transition-all"
+              onClick={() => setIsEditing(false)} 
+              className="p-3 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:bg-gray-50 transition-all"
             >
-              <X size={20} />
+              <X size={20}/>
             </button>
             <button 
-              onClick={handleSave}
-              disabled={isSaving}
-              className="p-3 bg-[#A0C55F] rounded-2xl shadow-sm text-white hover:bg-[#8eb052] transition-all"
+              onClick={handleSave} 
+              className="px-6 py-3 bg-[#A0C55F] text-white rounded-2xl shadow-lg shadow-[#A0C55F]/20 font-bold flex items-center gap-2 hover:bg-[#8eb052] transition-all"
             >
-              {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Check size={20} />}
+              <Check size={20}/> Save Changes
             </button>
           </div>
         )}
       </header>
 
-      {/* Profile Card */}
-      <div className="bg-white p-8 rounded-[48px] shadow-sm border border-gray-50 flex flex-col items-center gap-6 relative overflow-hidden group">
-        <div className="relative group/photo">
-          <div className="w-32 h-32 bg-[#DFF2C2] rounded-full border-4 border-white shadow-xl flex items-center justify-center overflow-hidden transition-transform duration-500 group-hover:scale-105">
-            {editForm.profilePic ? (
-              <img src={editForm.profilePic} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-              <UserIcon size={48} className="text-[#A0C55F]" />
-            )}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Avatar & Main Info */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-white p-8 rounded-[48px] shadow-sm border border-gray-50 flex flex-col items-center text-center gap-6 relative group overflow-hidden">
+            <div className="relative">
+              <div className="w-40 h-40 bg-[#DFF2C2] rounded-full overflow-hidden flex items-center justify-center border-4 border-white shadow-xl">
+                {isUploading ? (
+                  <Loader2 className="animate-spin text-[#A0C55F]" size={48} />
+                ) : user.profilePic ? (
+                  <img src={user.profilePic} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <UserIcon size={64} className="text-[#A0C55F]" />
+                )}
+              </div>
+              
+              <div className="absolute -bottom-2 -right-2 flex gap-2">
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-3 bg-[#FFE66D] text-[#2F3E2E] rounded-2xl shadow-lg hover:scale-105 transition-all"
+                  title="Upload/Take Photo"
+                >
+                  <Camera size={20} />
+                </button>
+                {user.profilePic && (
+                  <button 
+                    onClick={handleDeletePhoto}
+                    className="p-3 bg-white text-orange-400 rounded-2xl shadow-lg border border-orange-50 hover:bg-orange-50 transition-all"
+                    title="Delete Photo"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleFileChange} 
+              capture="environment"
+            />
+
+            <div className="space-y-1">
+              {isEditing ? (
+                <input 
+                  value={editForm.name}
+                  onChange={e => setEditForm({...editForm, name: e.target.value})}
+                  className="text-2xl font-brand font-bold text-center bg-[#F8FAF5] rounded-xl px-4 py-2 w-full focus:ring-2 focus:ring-[#A0C55F]/30"
+                />
+              ) : (
+                <h3 className="text-2xl font-brand font-bold text-[#2F3E2E]">{user.name}</h3>
+              )}
+              <p className="text-gray-400 font-medium text-sm">{user.email}</p>
+            </div>
+
+            <div className="bg-[#EBF7DA] px-4 py-2 rounded-full text-[#A0C55F] text-[10px] font-black uppercase tracking-widest">
+              Active Member
+            </div>
           </div>
-          {isEditing && (
+
+          <div className="space-y-3">
+            {[
+              { icon: Bell, label: 'Notifications', s: 'notifications' },
+              { icon: Shield, label: 'Privacy', s: 'privacy' },
+              { icon: HelpCircle, label: 'Help Center', s: 'help' }
+            ].map((item, i) => (
+              <button key={i} className="w-full bg-white p-5 rounded-[32px] flex justify-between items-center border border-gray-50 group hover:shadow-lg transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-[#F8FAF5] rounded-2xl group-hover:bg-[#DFF2C2] transition-colors">
+                    <item.icon className="text-gray-400 group-hover:text-[#2F3E2E]" size={20} />
+                  </div>
+                  <span className="font-bold text-gray-700">{item.label}</span>
+                </div>
+                <ChevronRight className="text-gray-200" size={18} />
+              </button>
+            ))}
+            
             <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-0 right-0 bg-[#FFE66D] p-3 rounded-2xl shadow-lg text-[#2F3E2E] hover:scale-110 active:scale-95 transition-all border-2 border-white"
+              onClick={handleSignOut} 
+              className="w-full bg-orange-50/50 p-5 rounded-[32px] flex justify-between items-center text-orange-400 border border-orange-50 mt-4 group hover:bg-orange-50 transition-all"
             >
-              <Camera size={20} />
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white rounded-2xl shadow-sm"><LogOut size={20} /></div>
+                <span className="font-bold">Sign Out</span>
+              </div>
             </button>
-          )}
-          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="user" onChange={handleImageChange} />
+          </div>
         </div>
 
-        {isEditing ? (
-          <div className="w-full space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-2">Display Name</label>
-              <input 
-                value={editForm.name}
-                onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                className="w-full px-6 py-4 bg-[#F8FAF5] rounded-3xl border-none focus:ring-2 focus:ring-[#A0C55F]/30 text-lg font-bold"
-                placeholder="Your Name"
-              />
+        {/* Right Column: Detailed Stats & Goals Editing */}
+        <div className="lg:col-span-8 space-y-8">
+          <div className="bg-white p-8 md:p-10 rounded-[56px] shadow-sm border border-gray-50 space-y-10">
+            <div className="space-y-1">
+              <h3 className="text-2xl font-brand font-bold text-[#2F3E2E]">General Information</h3>
+              <p className="text-gray-400 text-sm font-medium">Keep your health profile up to date for better AI coaching.</p>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-2">Health Goal</label>
-              <input 
-                value={editForm.goal}
-                onChange={e => setEditForm({ ...editForm, goal: e.target.value })}
-                className="w-full px-6 py-4 bg-[#F8FAF5] rounded-3xl border-none focus:ring-2 focus:ring-[#A0C55F]/30 text-lg font-bold"
-                placeholder="e.g. Feel Energized"
-              />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vital Statistics</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-bold text-gray-400">Weight ({user.weightUnit})</p>
+                    <input 
+                      disabled={!isEditing}
+                      type="number"
+                      value={isEditing ? editForm.weight : user.weight}
+                      onChange={e => setEditForm({...editForm, weight: parseFloat(e.target.value)})}
+                      className="w-full px-4 py-3 bg-[#F8FAF5] rounded-2xl font-bold border-none disabled:bg-transparent disabled:text-[#2F3E2E] focus:ring-2 focus:ring-[#A0C55F]/30"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-bold text-gray-400">Height (cm)</p>
+                    <input 
+                      disabled={!isEditing}
+                      type="number"
+                      value={isEditing ? editForm.height : user.height}
+                      onChange={e => setEditForm({...editForm, height: parseInt(e.target.value)})}
+                      className="w-full px-4 py-3 bg-[#F8FAF5] rounded-2xl font-bold border-none disabled:bg-transparent disabled:text-[#2F3E2E] focus:ring-2 focus:ring-[#A0C55F]/30"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Your Primary Goal</label>
+                <select 
+                  disabled={!isEditing}
+                  value={isEditing ? editForm.goal : user.goal}
+                  onChange={e => setEditForm({...editForm, goal: e.target.value})}
+                  className="w-full px-4 py-3 bg-[#F8FAF5] rounded-2xl font-bold border-none disabled:bg-transparent disabled:text-[#2F3E2E] appearance-none focus:ring-2 focus:ring-[#A0C55F]/30"
+                >
+                  <option value="Be more active 🥑">Be more active 🥑</option>
+                  <option value="Eat balanced meals 🥗">Eat balanced meals 🥗</option>
+                  <option value="Stay hydrated 💧">Stay hydrated 💧</option>
+                  <option value="Just curious! ✨">Just curious! ✨</option>
+                </select>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="text-center space-y-2">
-            <h3 className="text-3xl font-brand font-bold text-[#2F3E2E]">{user.name}</h3>
-            <p className="text-[#A0C55F] font-black text-xs tracking-[0.2em] uppercase bg-[#EBF7DA] px-4 py-1.5 rounded-full inline-block">
-              Goal: {user.goal}
-            </p>
-          </div>
-        )}
-        
-        <div className="grid grid-cols-3 w-full border-t border-gray-100 mt-4 pt-8 gap-4">
-          <div className="text-center space-y-2">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Weight</p>
-            {isEditing ? (
-              <div className="relative">
-                <input type="number" value={editForm.weight} onChange={e => setEditForm({ ...editForm, weight: parseFloat(e.target.value) || 0 })} className="w-full bg-[#F8FAF5] py-2 rounded-xl text-center font-bold text-sm" />
-                <span className="text-[8px] absolute right-1 bottom-1 text-gray-400 uppercase">kg</span>
+
+            <div className="space-y-6 pt-6 border-t border-gray-50">
+              <h4 className="text-xl font-brand font-bold text-[#2F3E2E] flex items-center gap-2">
+                <Target size={20} className="text-[#A0C55F]" />
+                Daily Habits Goals
+              </h4>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="bg-[#EBF7DA] p-6 rounded-[32px] space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div className="p-2 bg-white rounded-xl text-[#A0C55F] shadow-sm">
+                      <Footprints size={20} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-[#A0C55F] uppercase tracking-widest">Steps Goal</p>
+                    <div className="flex items-end gap-2">
+                      <input 
+                        disabled={!isEditing}
+                        type="number"
+                        value={isEditing ? editForm.dailyStepGoal : user.dailyStepGoal}
+                        onChange={e => setEditForm({...editForm, dailyStepGoal: parseInt(e.target.value)})}
+                        className="w-20 bg-transparent text-2xl font-brand font-bold text-[#2F3E2E] border-none p-0 focus:ring-0"
+                      />
+                      <span className="text-xs font-bold text-gray-400 mb-1">pts</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#E9F3FC] p-6 rounded-[32px] space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div className="p-2 bg-white rounded-xl text-blue-400 shadow-sm">
+                      <Droplets size={20} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Water Goal</p>
+                    <div className="flex items-end gap-2">
+                      <input 
+                        disabled={!isEditing}
+                        type="number"
+                        value={isEditing ? editForm.dailyWaterGoal : user.dailyWaterGoal}
+                        onChange={e => setEditForm({...editForm, dailyWaterGoal: parseInt(e.target.value)})}
+                        className="w-16 bg-transparent text-2xl font-brand font-bold text-[#2F3E2E] border-none p-0 focus:ring-0"
+                      />
+                      <span className="text-xs font-bold text-gray-400 mb-1">glasses</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-orange-50 p-6 rounded-[32px] space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div className="p-2 bg-white rounded-xl text-orange-400 shadow-sm">
+                      <Flame size={20} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Calorie Goal</p>
+                    <div className="flex items-end gap-2">
+                      <input 
+                        disabled={!isEditing}
+                        type="number"
+                        value={isEditing ? editForm.dailyCalorieGoal : user.dailyCalorieGoal}
+                        onChange={e => setEditForm({...editForm, dailyCalorieGoal: parseInt(e.target.value)})}
+                        className="w-20 bg-transparent text-2xl font-brand font-bold text-[#2F3E2E] border-none p-0 focus:ring-0"
+                      />
+                      <span className="text-xs font-bold text-gray-400 mb-1">kcal</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <p className="text-xl font-bold text-[#2F3E2E]">{user.weight}<span className="text-sm ml-0.5 opacity-40 font-medium">kg</span></p>
-            )}
-          </div>
-          <div className="text-center space-y-2 border-x border-gray-100 px-2">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Height</p>
-            {isEditing ? (
-              <div className="relative">
-                <input type="number" value={editForm.height} onChange={e => setEditForm({ ...editForm, height: parseInt(e.target.value) || 0 })} className="w-full bg-[#F8FAF5] py-2 rounded-xl text-center font-bold text-sm" />
-                <span className="text-[8px] absolute right-1 bottom-1 text-gray-400 uppercase">cm</span>
-              </div>
-            ) : (
-              <p className="text-xl font-bold text-[#2F3E2E]">{user.height}<span className="text-sm ml-0.5 opacity-40 font-medium">cm</span></p>
-            )}
-          </div>
-          <div className="text-center space-y-2">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Age</p>
-            {isEditing ? (
-              <input type="number" value={editForm.age} onChange={e => setEditForm({ ...editForm, age: parseInt(e.target.value) || 0 })} className="w-full bg-[#F8FAF5] py-2 rounded-xl text-center font-bold text-sm" />
-            ) : (
-              <p className="text-xl font-bold text-[#2F3E2E]">{user.age || 28}</p>
-            )}
+            </div>
           </div>
         </div>
       </div>
-
-      {!isEditing && (
-        <>
-          <div className="space-y-4">
-            <h4 className="text-xs font-black text-gray-300 uppercase tracking-[0.2em] ml-4">Account Settings</h4>
-            <div className="space-y-3">
-              {menuItems.map((item, i) => (
-                <button key={i} onClick={() => onNavigate(item.screen)} className="w-full bg-white p-6 rounded-[32px] border border-gray-50 flex justify-between items-center group active:scale-[0.98] transition-all hover:shadow-sm">
-                  <div className="flex items-center gap-5">
-                    <div className="p-4 bg-[#F8FAF5] rounded-[24px] group-hover:bg-[#DFF2C2] transition-all">
-                      <item.icon size={22} className="text-gray-400 group-hover:text-[#2F3E2E]" />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-bold text-[#2F3E2E] text-lg">{item.label}</p>
-                      {item.value && <p className="text-sm text-gray-400 font-medium">{item.value}</p>}
-                    </div>
-                  </div>
-                  <ChevronRight size={20} className="text-gray-200 group-hover:text-[#A0C55F] group-hover:translate-x-1 transition-all" />
-                </button>
-              ))}
-
-              <button onClick={handleSignOut} className="w-full bg-white p-6 rounded-[32px] border border-gray-50 flex justify-between items-center text-orange-400 mt-6 hover:bg-orange-50 group transition-all active:scale-[0.98]">
-                <div className="flex items-center gap-5">
-                  <div className="p-4 bg-orange-50 rounded-[24px] group-hover:bg-white transition-all">
-                    <LogOut size={22} />
-                  </div>
-                  <p className="font-bold text-lg">Sign Out</p>
-                </div>
-              </button>
-            </div>
-          </div>
-          <div className="pt-8 text-center space-y-2">
-            <p className="text-xs text-gray-300 font-black tracking-widest uppercase">Avocado Companion v1.2.0</p>
-          </div>
-        </>
-      )}
     </div>
   );
 };
