@@ -52,7 +52,10 @@ export const startAvocadoChat = (history: { role: 'user' | 'model', parts: [{ te
 export const analyzeFoodImage = async (base64Image: string, mimeType: string): Promise<FoodAnalysis> => {
   try {
     const ai = getAIClient();
-    const response = await ai.models.generateContent({
+    
+    // We cast the parameters to 'any' here to prevent TypeScript from blocking the build 
+    // due to 'responseSchema' not yet being in the official @google/genai type definitions.
+    const params: any = {
       model: 'gemini-3-pro-preview',
       contents: {
         parts: [
@@ -83,7 +86,9 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
           required: ["foodName", "calories", "isHealthy", "description", "nutritionSummary"],
         },
       },
-    });
+    };
+
+    const response = await ai.models.generateContent(params);
 
     const text = response.text;
     if (!text) throw new Error("No analysis returned.");
