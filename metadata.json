@@ -1,6 +1,6 @@
 {
-  "name": "Avocado - Friendly Health Tracker",
-  "description": "A calm, non-judgmental health and fitness tracker for beginners focusing on daily habits and positive reinforcement with a cute avocado mascot.",
+  "name": "Bito - Friendly Health Tracker",
+  "description": "A calm, non-judgmental health and fitness tracker for beginners focusing on daily habits and positive reinforcement with Bito, your cute avocado mascot.",
   "requestFramePermissions": [
     "camera"
   ]
