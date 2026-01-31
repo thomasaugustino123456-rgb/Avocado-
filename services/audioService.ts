@@ -4,7 +4,14 @@ class AudioService {
 
   private init() {
     if (!this.ctx) {
-      this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      try {
+        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          this.ctx = new AudioContextClass();
+        }
+      } catch (e) {
+        console.warn("Bito couldn't start his music box (AudioContext):", e);
+      }
     }
   }
 
@@ -40,7 +47,6 @@ class AudioService {
     this.init();
     if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
-    const noise = this.ctx.createBufferSource();
     const gain = this.ctx.createGain();
     
     // High pitched crystal ding

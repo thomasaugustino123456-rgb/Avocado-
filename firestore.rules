@@ -1,22 +1,22 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to read and write only their own data
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Helper to check if user is logged in
+    function isSignedIn() {
+      return request.auth != null;
     }
-    
-    match /daily_progress_and_trophies/{logId} {
-      allow read, write: if request.auth != null && logId.startsWith(request.auth.uid);
+
+    // Rule for the users collection where document ID is the UID
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
-    
-    match /daily_meal/{mealId} {
-      allow read, write: if request.auth != null && resource == null || resource.data.userId == request.auth.uid;
-    }
-    
-    match /library/{itemId} {
-      allow read, write: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);
+
+    // Generic rule for all other collections (Daily Logs, Library, etc.)
+    // Documents must have a 'userId' field matching the requester's UID
+    match /{collectionName}/{docId} {
+      allow read, write: if isSignedIn() && 
+        (resource == null || resource.data.userId == request.auth.uid) &&
+        (request.resource == null || request.resource.data.userId == request.auth.uid);
     }
   }
 }

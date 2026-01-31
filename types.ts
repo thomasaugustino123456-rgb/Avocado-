@@ -58,6 +58,6 @@ export interface LibraryItem {
   userId?: string; // Added
 }
 
-export type Screen = 'onboarding' | 'home' | 'stats' | 'profile' | 'add_meal' | 'scan_food' | 'calendar' | 'notifications' | 'privacy' | 'help' | 'chat' | 'library';
+export type Screen = 'landing' | 'onboarding' | 'home' | 'stats' | 'profile' | 'add_meal' | 'scan_food' | 'calendar' | 'notifications' | 'privacy' | 'help' | 'chat' | 'library';
 
 export type TrophyStatus = 'golden' | 'ice' | 'broken';

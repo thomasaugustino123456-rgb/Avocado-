@@ -1,9 +1,9 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, ArrowLeft, Loader2, Sparkles } from 'lucide-react';
 import { ChatMessage } from '../types';
 import { startAvocadoChat } from '../services/geminiService';
 import { Mascot } from '../components/Mascot';
+import { persistenceService } from '../services/persistenceService';
 
 export const ChatScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -13,7 +13,6 @@ export const ChatScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  // Create a ref for the chat session to persist it across renders
   const chatSessionRef = useRef<any>(null);
 
   useEffect(() => {
@@ -33,17 +32,25 @@ export const ChatScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
 
     const userMsg = input.trim();
     setInput('');
-    const newMessages: ChatMessage[] = [...messages, { role: 'user', text: userMsg, timestamp: new Date() }];
+    const userChatMessage: ChatMessage = { role: 'user', text: userMsg, timestamp: new Date() };
+    const newMessages: ChatMessage[] = [...messages, userChatMessage];
     setMessages(newMessages);
     setIsLoading(true);
 
+    // Persist user message to charts collection
+    await persistenceService.saveChatMessage(userChatMessage);
+
     try {
       const response = await chatSessionRef.current.sendMessage({ message: userMsg });
-      setMessages(prev => [...prev, { 
+      const modelChatMessage: ChatMessage = { 
         role: 'model', 
         text: response.text || "Oops, I got lost in the pit! Try again? 🥑", 
         timestamp: new Date() 
-      }]);
+      };
+      setMessages(prev => [...prev, modelChatMessage]);
+      
+      // Persist model response to charts collection
+      await persistenceService.saveChatMessage(modelChatMessage);
     } catch (error) {
       console.error("Chat error:", error);
       setMessages(prev => [...prev, { 
@@ -58,7 +65,6 @@ export const ChatScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
 
   return (
     <div className="flex flex-col h-full max-h-screen animate-in fade-in duration-500">
-      {/* Chat Header */}
       <header className="p-6 bg-white border-b border-gray-100 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
           {onBack && (
@@ -82,7 +88,6 @@ export const ChatScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         </div>
       </header>
 
-      {/* Messages Area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#F8FAF5]/50">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}>
@@ -112,7 +117,6 @@ export const ChatScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         )}
       </div>
 
-      {/* Input Area */}
       <div className="p-6 bg-white border-t border-gray-100 sticky bottom-0">
         <div className="relative max-w-4xl mx-auto flex items-center gap-4">
           <input 

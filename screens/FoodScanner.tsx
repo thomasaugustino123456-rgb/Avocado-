@@ -1,9 +1,9 @@
-
 import React, { useState, useRef } from 'react';
 import { ArrowLeft, Camera, Upload, Loader2, CheckCircle2, AlertCircle, ChevronRight, Plus, RefreshCw, Bookmark, Check } from 'lucide-react';
 import { analyzeFoodImage } from '../services/geminiService';
 import { FoodAnalysis, MealType, Meal } from '../types';
 import { Mascot } from '../components/Mascot';
+import { persistenceService } from '../services/persistenceService';
 
 interface FoodScannerProps {
   onCancel: () => void;
@@ -14,8 +14,10 @@ interface FoodScannerProps {
 export const FoodScanner: React.FC<FoodScannerProps> = ({ onCancel, onAddMeal, onSaveToLibrary }) => {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [analysis, setAnalysis] = useState<FoodAnalysis | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [isSavingToLib, setIsSavingToLib] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lastFile, setLastFile] = useState<{base64: string, type: string} | null>(null);
@@ -43,6 +45,9 @@ export const FoodScanner: React.FC<FoodScannerProps> = ({ onCancel, onAddMeal, o
     try {
       const result = await analyzeFoodImage(base64, type);
       setAnalysis(result);
+      
+      // Auto-persist scan to 'food_scans' collection
+      await persistenceService.saveFoodScan(result);
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Oops! I couldn't scan that. Can you try another photo?");
@@ -51,10 +56,15 @@ export const FoodScanner: React.FC<FoodScannerProps> = ({ onCancel, onAddMeal, o
     }
   };
 
-  const handleSave = () => {
-    if (onSaveToLibrary && analysis) {
-      onSaveToLibrary(analysis);
-      setIsSaved(true);
+  const handleSaveToLib = async () => {
+    if (onSaveToLibrary && analysis && !isSavingToLib) {
+      setIsSavingToLib(true);
+      try {
+        await onSaveToLibrary(analysis);
+        setIsSaved(true);
+      } finally {
+        setIsSavingToLib(false);
+      }
     }
   };
 
@@ -64,15 +74,20 @@ export const FoodScanner: React.FC<FoodScannerProps> = ({ onCancel, onAddMeal, o
     }
   };
 
-  const handleAddToMeal = () => {
-    if (!analysis) return;
-    onAddMeal({
-      id: Date.now().toString(),
-      name: analysis.foodName,
-      calories: analysis.calories,
-      type: 'lunch',
-      timestamp: new Date(),
-    });
+  const handleAddToMeal = async () => {
+    if (!analysis || isAdding) return;
+    setIsAdding(true);
+    try {
+      await onAddMeal({
+        id: Date.now().toString(),
+        name: analysis.foodName,
+        calories: analysis.calories,
+        type: 'lunch',
+        timestamp: new Date(),
+      });
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -171,12 +186,13 @@ export const FoodScanner: React.FC<FoodScannerProps> = ({ onCancel, onAddMeal, o
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <button 
-                        onClick={handleSave}
+                        onClick={handleSaveToLib}
+                        disabled={isSavingToLib}
                         className={`p-3 rounded-2xl shadow-sm transition-all ${
                           isSaved ? 'bg-[#A0C55F] text-white' : 'bg-[#F8FAF5] text-[#A0C55F] hover:bg-[#DFF2C2]'
                         }`}
                       >
-                        {isSaved ? <Check size={20} /> : <Bookmark size={20} />}
+                        {isSavingToLib ? <Loader2 size={20} className="animate-spin" /> : (isSaved ? <Check size={20} /> : <Bookmark size={20} />)}
                       </button>
                       {analysis.isHealthy ? (
                         <div className="bg-[#EBF7DA] text-[#A0C55F] px-4 py-2 rounded-2xl flex items-center gap-2 font-bold text-xs">
@@ -202,10 +218,11 @@ export const FoodScanner: React.FC<FoodScannerProps> = ({ onCancel, onAddMeal, o
 
                 <button 
                   onClick={handleAddToMeal}
-                  className="w-full bg-[#A0C55F] text-white py-6 rounded-[32px] font-bold text-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
+                  disabled={isAdding}
+                  className="w-full bg-[#A0C55F] text-white py-6 rounded-[32px] font-bold text-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-70"
                 >
-                  <Plus size={32} />
-                  Add to My Meals
+                  {isAdding ? <Loader2 className="animate-spin" size={32} /> : <Plus size={32} />}
+                  {isAdding ? 'Logging...' : 'Add to My Meals'}
                 </button>
               </div>
             )}

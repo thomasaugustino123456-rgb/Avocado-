@@ -1,230 +1,238 @@
+import { User, DailyLog, LibraryItem, Meal, ChatMessage, FoodAnalysis } from '../types';
+import { auth, db } from './firebase';
+import { 
+  doc, 
+  setDoc, 
+  getDoc, 
+  collection, 
+  getDocs, 
+  deleteDoc, 
+  query, 
+  where, 
+  serverTimestamp,
+  Timestamp
+} from 'firebase/firestore';
 
-import { User, DailyLog, LibraryItem, Meal } from '../types';
-import { db, auth } from './firebase';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
-
-const STORAGE_KEYS = {
-  USER: 'bito_user_profile',
-  DAILY_LOGS: 'bito_daily_logs_v2',
-  LIBRARY: 'bito_library_items'
-};
-
-const compressImage = (file: File | Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 300;
-        const MAX_HEIGHT = 300;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
-      };
-    };
-    reader.onerror = (error) => reject(error);
-  });
-};
-
-const tryFirestore = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
-  try {
-    return await fn();
-  } catch (error: any) {
-    if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
-      console.error("Firestore Permission Error: Your Security Rules are blocking this request. Ensure you pasted the rules in Firebase Console!", error);
-    } else {
-      console.warn("Firestore Sync Issue:", error?.message || error);
+const convertTimestamps = (data: any): any => {
+  if (!data || typeof data !== 'object') return data;
+  const newData = Array.isArray(data) ? [...data] : { ...data };
+  for (const key in newData) {
+    const val = newData[key];
+    if (val instanceof Timestamp) {
+      newData[key] = val.toDate();
+    } else if (typeof val === 'object') {
+      newData[key] = convertTimestamps(val);
     }
-    return fallback;
   }
+  return newData;
 };
 
 export const persistenceService = {
   getUser: async (): Promise<User | null> => {
-    const saved = localStorage.getItem(STORAGE_KEYS.USER);
-    const localUser = saved ? JSON.parse(saved) : null;
-
     const currentUser = auth.currentUser;
     if (currentUser) {
-      const remoteUser = await tryFirestore(async () => {
-        const docRef = doc(db, "users", currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        return docSnap.exists() ? (docSnap.data() as User) : null;
-      }, null);
-
-      if (remoteUser) {
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(remoteUser));
-        return remoteUser;
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        return userDoc.exists() ? (convertTimestamps(userDoc.data()) as User) : null;
+      } catch (err) {
+        console.warn("Persistence: Using cached/offline user data", err);
+        return null; 
       }
     }
-    return localUser;
+    return null;
   },
 
-  saveUser: async (user: User) => {
+  saveUser: async (userData: User) => {
     const currentUser = auth.currentUser;
-    if (!currentUser) return;
-
-    const userData = {
-      ...user,
-      email: currentUser.email || user.email || '',
-      userId: currentUser.uid,
-      photoFileName: user.photoFileName || 'internal_db_storage'
-    };
-    
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
-    await tryFirestore(() => setDoc(doc(db, "users", currentUser.uid), userData, { merge: true }), null);
-  },
-
-  uploadProfilePicture: async (file: File | Blob): Promise<string> => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error("User must be logged in to upload a photo.");
-
-    const compressedBase64 = await compressImage(file);
-
-    await setDoc(doc(db, "users", currentUser.uid), {
-      profilePic: compressedBase64,
-      photoFileName: 'internal_db_storage',
-      userId: currentUser.uid
-    }, { merge: true });
-
-    const saved = localStorage.getItem(STORAGE_KEYS.USER);
-    const localUser = saved ? JSON.parse(saved) : {};
-    localUser.profilePic = compressedBase64;
-    localUser.photoFileName = 'internal_db_storage';
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(localUser));
-
-    return compressedBase64;
-  },
-
-  deleteProfilePicture: async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return;
-
-    await setDoc(doc(db, "users", currentUser.uid), {
-      profilePic: '',
-      photoFileName: '',
-      userId: currentUser.uid
-    }, { merge: true });
-
-    const saved = localStorage.getItem(STORAGE_KEYS.USER);
-    const localUser = saved ? JSON.parse(saved) : {};
-    localUser.profilePic = '';
-    localUser.photoFileName = '';
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(localUser));
+    if (currentUser) {
+      try {
+        await setDoc(doc(db, 'users', currentUser.uid), { 
+          ...userData, 
+          userId: currentUser.uid 
+        }, { merge: true });
+      } catch (err) {
+        console.error("Persistence: Failed to save user", err);
+      }
+    }
   },
 
   saveMeal: async (meal: Meal) => {
     const currentUser = auth.currentUser;
     if (currentUser) {
-      const mealData = { 
-        ...meal, 
-        userId: currentUser.uid, 
-        timestamp: meal.timestamp instanceof Date ? meal.timestamp.toISOString() : meal.timestamp 
-      };
-      await tryFirestore(() => setDoc(doc(db, "daily_meal", meal.id), mealData, { merge: true }), null);
+      try {
+        const mealToSave = {
+          ...meal,
+          userId: currentUser.uid,
+          created_at: serverTimestamp()
+        };
+        await setDoc(doc(db, 'meal_history', meal.id), mealToSave);
+      } catch (err) {
+        console.error("Persistence: Failed to save meal", err);
+      }
+    }
+  },
+
+  saveDailyLog: async (log: DailyLog) => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const docId = `${currentUser.uid}_${log.date}`;
+        await setDoc(doc(db, 'daily_logs', docId), { 
+          ...log, 
+          userId: currentUser.uid 
+        }, { merge: true });
+      } catch (err) {
+        console.error("Persistence: Failed to save daily log", err);
+      }
     }
   },
 
   getDailyLog: async (date: string): Promise<DailyLog> => {
-    const localLogs = JSON.parse(localStorage.getItem(STORAGE_KEYS.DAILY_LOGS) || '{}');
-    const localLog = localLogs[date];
-
     const currentUser = auth.currentUser;
     if (currentUser) {
-      const remoteLog = await tryFirestore(async () => {
+      try {
         const docId = `${currentUser.uid}_${date}`;
-        const docRef = doc(db, "daily_progress_and_trophies", docId);
-        const docSnap = await getDoc(docRef);
-        return docSnap.exists() ? (docSnap.data() as DailyLog) : null;
-      }, null);
-
-      if (remoteLog) {
-        localLogs[date] = remoteLog;
-        localStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(localLogs));
-        return remoteLog;
+        const logDoc = await getDoc(doc(db, 'daily_logs', docId));
+        if (logDoc.exists()) {
+          return convertTimestamps(logDoc.data()) as DailyLog;
+        }
+      } catch (err) {
+        console.warn("Persistence: Falling back to local log state", err);
       }
     }
-
-    return localLog || { date, steps: 0, waterGlasses: 0, meals: [] };
-  },
-
-  saveDailyLog: async (log: DailyLog) => {
-    const localLogs = JSON.parse(localStorage.getItem(STORAGE_KEYS.DAILY_LOGS) || '{}');
-    localLogs[log.date] = log;
-    localStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(localLogs));
-
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      const docId = `${currentUser.uid}_${log.date}`;
-      const logData = { ...log, userId: currentUser.uid };
-      await tryFirestore(() => setDoc(doc(db, "daily_progress_and_trophies", docId), logData, { merge: true }), null);
-      
-      for (const meal of log.meals) {
-        await persistenceService.saveMeal(meal);
-      }
-    }
-  },
-
-  getLibrary: async (): Promise<LibraryItem[]> => {
-    const localLib = JSON.parse(localStorage.getItem(STORAGE_KEYS.LIBRARY) || '[]');
-    
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      const remoteLib = await tryFirestore(async () => {
-        const q = query(collection(db, "library"), where("userId", "==", currentUser.uid));
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LibraryItem));
-      }, []);
-
-      if (remoteLib && remoteLib.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.LIBRARY, JSON.stringify(remoteLib));
-        return remoteLib;
-      }
-    }
-    return localLib;
+    return { date, steps: 0, waterGlasses: 0, meals: [] };
   },
 
   saveToLibrary: async (item: Omit<LibraryItem, 'id' | 'created_at'>): Promise<LibraryItem> => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const newItem = { ...item, id, created_at: new Date().toISOString() } as LibraryItem;
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error("Must be logged in to save to library");
 
-    const localLib = JSON.parse(localStorage.getItem(STORAGE_KEYS.LIBRARY) || '[]');
-    localStorage.setItem(STORAGE_KEYS.LIBRARY, JSON.stringify([newItem, ...localLib]));
+    const createdAt = new Date().toISOString();
+    const timestamp = Date.now();
+    
+    let customId = '';
+    if (item.item_type === 'food') {
+      const foodName = (item.item_data as FoodAnalysis).foodName?.replace(/\s+/g, '_') || 'Food';
+      customId = `Food_analyzed_${foodName}_${timestamp}`;
+    } else {
+      customId = `Charted_${timestamp}`;
+    }
 
+    const itemToSave = { 
+      ...item, 
+      userId: currentUser.uid, 
+      created_at: createdAt 
+    };
+    
+    try {
+      await setDoc(doc(db, 'Library', customId), itemToSave);
+    } catch (err) {
+      console.error("Persistence: Library save failed", err);
+      // We still return the object so the UI can update locally
+    }
+    return { id: customId, ...itemToSave };
+  },
+
+  getLibrary: async (): Promise<LibraryItem[]> => {
     const currentUser = auth.currentUser;
     if (currentUser) {
-      const libData = { ...newItem, userId: currentUser.uid };
-      await tryFirestore(() => setDoc(doc(db, "library", id), libData, { merge: true }), null);
+      try {
+        const q = query(
+          collection(db, 'Library'), 
+          where('userId', '==', currentUser.uid)
+        );
+        const snap = await getDocs(q);
+        const items = snap.docs.map(doc => ({ 
+          id: doc.id, 
+          ...convertTimestamps(doc.data()) 
+        } as LibraryItem));
+        
+        return items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      } catch (err) {
+        console.warn("Persistence: Library load failed", err);
+        return [];
+      }
     }
-    return newItem;
+    return [];
   },
 
   deleteFromLibrary: async (id: string) => {
-    const localLib = JSON.parse(localStorage.getItem(STORAGE_KEYS.LIBRARY) || '[]');
-    localStorage.setItem(STORAGE_KEYS.LIBRARY, JSON.stringify(localLib.filter((i: any) => i.id !== id)));
-
     const currentUser = auth.currentUser;
     if (currentUser) {
-      await tryFirestore(() => deleteDoc(doc(db, "library", id)), null);
+      try {
+        await deleteDoc(doc(db, 'Library', id));
+      } catch (err) {
+        console.error("Persistence: Library delete failed", err);
+      }
+    }
+  },
+
+  saveChatMessage: async (msg: ChatMessage) => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const id = `chat_${currentUser.uid}_${Date.now()}`;
+        await setDoc(doc(db, 'chat_history', id), { 
+          ...msg, 
+          userId: currentUser.uid,
+          timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : msg.timestamp
+        });
+      } catch (err) {
+        console.error("Persistence: Chat save failed", err);
+      }
+    }
+  },
+
+  saveFoodScan: async (analysis: FoodAnalysis) => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const id = `scan_${currentUser.uid}_${Date.now()}`;
+        await setDoc(doc(db, 'food_scans', id), { 
+          ...analysis, 
+          userId: currentUser.uid,
+          created_at: serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Persistence: Food scan save failed", err);
+      }
+    }
+  },
+
+  uploadProfilePicture: async (file: File | Blob): Promise<string> => {
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onload = async (e) => {
+        const base64 = e.target?.result as string;
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          try {
+            await setDoc(doc(db, 'users', currentUser.uid), { 
+              profilePic: base64, 
+              userId: currentUser.uid 
+            }, { merge: true });
+          } catch (err) {
+            console.error("Persistence: Photo upload failed", err);
+          }
+        }
+        resolve(base64);
+      };
+      reader.onerror = () => reject(new Error("File read error"));
+      reader.readAsDataURL(file);
+    });
+  },
+
+  deleteProfilePicture: async () => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        await setDoc(doc(db, 'users', currentUser.uid), { 
+          profilePic: "", 
+          userId: currentUser.uid 
+        }, { merge: true });
+      } catch (err) {
+        console.error("Persistence: Photo delete failed", err);
+      }
     }
   }
 };

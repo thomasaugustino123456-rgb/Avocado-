@@ -1,11 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { auth } from '../services/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Mascot, MascotMood } from '../components/Mascot';
-import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff, Sparkles, ChevronLeft, UserCircle } from 'lucide-react';
 
-export const Auth: React.FC = () => {
+interface AuthProps {
+  onBack?: () => void;
+  onGuestLogin?: () => void;
+}
+
+export const Auth: React.FC<AuthProps> = ({ onBack, onGuestLogin }) => {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -35,10 +39,12 @@ export const Auth: React.FC = () => {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err: any) {
+      console.error(err);
       let friendlyError = "Bito is crying... check your details!";
-      if (err.code === 'auth/user-not-found') friendlyError = "No account found with this email.";
-      if (err.code === 'auth/wrong-password') friendlyError = "Oops! That's the wrong password.";
-      if (err.code === 'auth/email-already-in-use') friendlyError = "This email is already registered!";
+      if (err.code === 'auth/invalid-credential') friendlyError = "Wrong email or password.";
+      if (err.code === 'auth/email-already-in-use') friendlyError = "You already have an account!";
+      if (err.code === 'auth/weak-password') friendlyError = "Password should be at least 6 characters.";
+      if (err.code === 'auth/invalid-email') friendlyError = "That email looks a bit odd.";
       setError(friendlyError);
       setMood('error');
     } finally {
@@ -47,7 +53,16 @@ export const Auth: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#F0F4E8]">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#F0F4E8] relative">
+      {onBack && (
+        <button 
+          onClick={onBack}
+          className="absolute top-10 left-10 p-4 bg-white/60 hover:bg-white rounded-3xl transition-all flex items-center gap-2 font-bold shadow-sm"
+        >
+          <ChevronLeft /> Back
+        </button>
+      )}
+
       <div className="w-full max-w-md space-y-8 bg-white/95 backdrop-blur-2xl p-10 rounded-[64px] shadow-2xl border border-white/50 animate-in zoom-in-95 duration-500 relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#A0C55F]/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-[#FFE66D]/10 rounded-full blur-3xl" />
@@ -122,8 +137,25 @@ export const Auth: React.FC = () => {
             )}
           </button>
         </form>
+        
+        {onGuestLogin && (
+            <div className="relative z-10 text-center space-y-4">
+                <div className="flex items-center gap-4 opacity-50">
+                    <div className="h-px bg-gray-300 flex-1"/>
+                    <span className="text-xs font-bold text-gray-400 uppercase">Or</span>
+                    <div className="h-px bg-gray-300 flex-1"/>
+                </div>
+                <button
+                    onClick={onGuestLogin}
+                    className="w-full bg-white border border-gray-100 py-4 rounded-[36px] text-gray-500 font-bold hover:bg-gray-50 hover:text-[#2F3E2E] transition-all flex items-center justify-center gap-2"
+                >
+                    <UserCircle size={20} />
+                    Continue as Guest
+                </button>
+            </div>
+        )}
 
-        <div className="text-center pt-4 relative z-10">
+        <div className="text-center pt-2 relative z-10">
           <button
             onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
             className="text-gray-400 font-bold text-sm hover:text-[#A0C55F] transition-colors p-2"

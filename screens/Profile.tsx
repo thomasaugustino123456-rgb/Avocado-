@@ -1,22 +1,23 @@
-
 import React, { useState, useRef } from 'react';
 import { User, Screen } from '../types';
-import { auth } from '../services/firebase';
-import { signOut } from "firebase/auth";
 import { persistenceService } from '../services/persistenceService';
+import { auth } from '../services/firebase';
+import { signOut } from 'firebase/auth';
 import { 
   LogOut, User as UserIcon, Edit2, Check, X, ChevronRight, 
-  Bell, Shield, HelpCircle, Camera, Upload, Trash2, 
+  Bell, Shield, HelpCircle, Camera, Trash2, 
   Target, Footprints, Droplets, Flame, Loader2
 } from 'lucide-react';
 
 interface ProfileProps {
   user: User;
+  isGuest: boolean;
   setUser: (u: User) => void;
   onNavigate: (screen: Screen) => void;
+  onExitGuest: () => void;
 }
 
-export const Profile: React.FC<ProfileProps> = ({ user, setUser, onNavigate }) => {
+export const Profile: React.FC<ProfileProps> = ({ user, isGuest, setUser, onExitGuest }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<User>({ ...user });
   const [isUploading, setIsUploading] = useState(false);
@@ -28,7 +29,19 @@ export const Profile: React.FC<ProfileProps> = ({ user, setUser, onNavigate }) =
     setIsEditing(false);
   };
 
-  const handleSignOut = () => signOut(auth);
+  const handleSignOut = async () => {
+    if (isGuest) {
+        if (!confirm("Exiting Guest Mode will return you to the login screen. Your guest data is saved locally.")) return;
+        onExitGuest();
+    } else {
+        if (!confirm("Are you sure you want to sign out?")) return;
+        try {
+          await signOut(auth);
+        } catch (e) {
+          console.error("Sign out error", e);
+        }
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,7 +55,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, setUser, onNavigate }) =
       setEditForm(prev => ({ ...prev, profilePic: downloadURL }));
     } catch (err) {
       console.error("Upload error:", err);
-      alert("Failed to upload photo. Please check your storage rules!");
+      alert("Failed to upload photo. If in Guest Mode, storage is limited.");
     } finally {
       setIsUploading(false);
     }
@@ -146,11 +159,11 @@ export const Profile: React.FC<ProfileProps> = ({ user, setUser, onNavigate }) =
               ) : (
                 <h3 className="text-2xl font-brand font-bold text-[#2F3E2E]">{user.name}</h3>
               )}
-              <p className="text-gray-400 font-medium text-sm">{user.email}</p>
+              <p className="text-gray-400 font-medium text-sm">{user.email || (isGuest ? 'Guest User' : 'Cloud Member')}</p>
             </div>
 
-            <div className="bg-[#EBF7DA] px-4 py-2 rounded-full text-[#A0C55F] text-[10px] font-black uppercase tracking-widest">
-              Active Member
+            <div className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${isGuest ? 'bg-orange-50 text-orange-400' : 'bg-blue-50 text-blue-500'}`}>
+              {isGuest ? 'Local Mode' : 'Cloud Synced'}
             </div>
           </div>
 
@@ -177,7 +190,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, setUser, onNavigate }) =
             >
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-white rounded-2xl shadow-sm"><LogOut size={20} /></div>
-                <span className="font-bold">Sign Out</span>
+                <span className="font-bold">{isGuest ? 'Exit Guest Mode' : 'Sign Out'}</span>
               </div>
             </button>
           </div>

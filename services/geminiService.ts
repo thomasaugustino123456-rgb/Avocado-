@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import { GoogleGenAI, Type } from "@google/genai";
 import { FoodAnalysis } from "../types";
@@ -24,6 +25,9 @@ export const getEncouragement = async (userName: string, steps: number, water: n
       Target User: ${userName}
       Stats: ${steps} steps, ${water} glasses of water.
       Goal: Provide a short (1 sentence), extremely friendly, non-judgmental, and encouraging mascot message. Focus on wellness and feeling good.`,
+      config: {
+        thinkingConfig: { thinkingBudget: 0 }
+      }
     });
     return response.text || LOCAL_GREETINGS[Math.floor(Math.random() * LOCAL_GREETINGS.length)];
   } catch (error: any) {
@@ -34,8 +38,10 @@ export const getEncouragement = async (userName: string, steps: number, water: n
 
 export const startAvocadoChat = (history: { role: 'user' | 'model', parts: [{ text: string }] }[]) => {
   const ai = getAIClient();
+  // history should be passed at the top level of the parameter object.
   return ai.chats.create({
     model: 'gemini-3-flash-preview',
+    history: history,
     config: {
       systemInstruction: `You are Bito, the fun and supportive mascot of a health and fitness app. 
       Your personality:
@@ -45,7 +51,7 @@ export const startAvocadoChat = (history: { role: 'user' | 'model', parts: [{ te
       - You provide helpful health tips, encouragement, and casual conversation.
       - Keep responses relatively concise but full of personality.
       - Your goal is to make wellness feel like a fun game.`,
-      history: history,
+      thinkingConfig: { thinkingBudget: 0 }
     },
   });
 };
@@ -54,9 +60,8 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
   try {
     const ai = getAIClient();
     
-    // Using as any to bypass local library type definitions that might be outdated
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           {
@@ -72,6 +77,7 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
       },
       config: {
         responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 0 },
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -86,10 +92,11 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
           required: ["foodName", "calories", "isHealthy", "description", "nutritionSummary"],
         },
       },
-    } as any);
+    });
 
     const text = response.text;
     if (!text) throw new Error("No analysis returned.");
+    // Strip markdown to ensure JSON parsing succeeds.
     const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanedText) as FoodAnalysis;
   } catch (error: any) {
