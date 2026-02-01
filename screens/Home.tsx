@@ -253,7 +253,6 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
                 className="h-full rounded-full transition-all duration-[1200ms] cubic-bezier(0.34, 1.56, 0.64, 1) shadow-lg relative bg-[#A0C55F]"
                 style={{ width: `${progressPercent}%` }}
               >
-                 {/* Shimmer overlay */}
                  <div className="absolute inset-0 bg-white/20 animate-shimmer" />
               </div>
             </div>
