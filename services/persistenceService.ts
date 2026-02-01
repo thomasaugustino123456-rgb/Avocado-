@@ -1,5 +1,7 @@
+
 import { User, DailyLog, LibraryItem, Meal, ChatMessage, FoodAnalysis } from '../types';
 import { auth, db } from './firebase';
+import { deleteUser } from 'firebase/auth';
 import { 
   doc, 
   setDoc, 
@@ -10,7 +12,9 @@ import {
   query, 
   where, 
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  orderBy,
+  limit
 } from 'firebase/firestore';
 
 const convertTimestamps = (data: any): any => {
@@ -128,7 +132,6 @@ export const persistenceService = {
       await setDoc(doc(db, 'Library', customId), itemToSave);
     } catch (err) {
       console.error("Persistence: Library save failed", err);
-      // We still return the object so the UI can update locally
     }
     return { id: customId, ...itemToSave };
   },
@@ -233,6 +236,120 @@ export const persistenceService = {
       } catch (err) {
         console.error("Persistence: Photo delete failed", err);
       }
+    }
+  },
+
+  exportUserData: async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error("Must be logged in to export data.");
+
+    try {
+      const exportData: any = {
+        exportedAt: new Date().toISOString(),
+        userId: currentUser.uid,
+        userProfile: {},
+        dailyLogs: [],
+        library: [],
+        foodScans: []
+      };
+
+      // Fetch User Profile
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          exportData.userProfile = convertTimestamps(userDoc.data());
+        }
+      } catch (e) { console.error("Export: User profile fetch failed", e); }
+
+      // Fetch Daily Logs
+      try {
+        const logsQ = query(collection(db, 'daily_logs'), where('userId', '==', currentUser.uid));
+        const logsSnap = await getDocs(logsQ);
+        exportData.dailyLogs = logsSnap.docs.map(d => convertTimestamps(d.data()));
+      } catch (e) { 
+        console.error("Export: Daily logs fetch failed", e);
+        throw new Error("Daily logs permission error"); 
+      }
+
+      // Fetch Library
+      try {
+        const libQ = query(collection(db, 'Library'), where('userId', '==', currentUser.uid));
+        const libSnap = await getDocs(libQ);
+        exportData.library = libSnap.docs.map(d => convertTimestamps(d.data()));
+      } catch (e) { 
+        console.error("Export: Library fetch failed", e); 
+        throw new Error("Library permission error"); 
+      }
+
+      // Fetch Food Scans
+      try {
+        const scanQ = query(collection(db, 'food_scans'), where('userId', '==', currentUser.uid));
+        const scanSnap = await getDocs(scanQ);
+        exportData.foodScans = scanSnap.docs.map(d => convertTimestamps(d.data()));
+      } catch (e) { 
+        console.error("Export: Food scans fetch failed", e); 
+        throw new Error("Food scans permission error"); 
+      }
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bito_complete_health_data_${currentUser.uid}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export process failed overall:", err);
+      throw err;
+    }
+  },
+
+  deleteAccount: async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    
+    try {
+      // First delete user document from firestore
+      await deleteDoc(doc(db, 'users', currentUser.uid));
+      // Then delete auth user
+      await deleteUser(currentUser);
+    } catch (err) {
+      console.error("Delete account failed:", err);
+      throw err;
+    }
+  },
+
+  saveSupportMessage: async (message: { name: string; email: string; message: string }) => {
+    const currentUser = auth.currentUser;
+    const id = `support_${Date.now()}`;
+    await setDoc(doc(db, 'supportMessages', id), {
+      ...message,
+      userId: currentUser?.uid || 'guest',
+      timestamp: serverTimestamp(),
+      status: 'sent'
+    });
+  },
+
+  getSupportMessages: async (isAdmin: boolean = false): Promise<any[]> => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return [];
+    
+    try {
+      let q;
+      if (isAdmin) {
+        q = query(collection(db, 'supportMessages'), orderBy('timestamp', 'desc'), limit(50));
+      } else {
+        q = query(
+          collection(db, 'supportMessages'), 
+          where('userId', '==', currentUser.uid),
+          orderBy('timestamp', 'desc')
+        );
+      }
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) }));
+    } catch (err) {
+      console.error("Persistence: Failed to fetch support messages", err);
+      return [];
     }
   }
 };

@@ -7,7 +7,19 @@ export interface Meal {
   calories: number;
   type: MealType;
   timestamp: Date;
-  userId?: string; // Added for top-level collection association
+  userId?: string;
+}
+
+export interface UserSettings {
+  notifications: {
+    mealReminders: boolean;
+    streakUpdates: boolean;
+    tipsEncouragement: boolean;
+    reminderTime: string;
+  };
+  privacy: {
+    libraryPublic: boolean;
+  };
 }
 
 export interface User {
@@ -19,11 +31,12 @@ export interface User {
   height: number;
   goal: string;
   profilePic?: string;
-  photoFileName?: string; // Added
-  userId?: string; // Added
+  photoFileName?: string;
+  userId?: string;
   dailyCalorieGoal: number;
   dailyStepGoal: number;
   dailyWaterGoal: number;
+  settings?: UserSettings;
 }
 
 export interface DailyLog {
@@ -31,7 +44,7 @@ export interface DailyLog {
   steps: number;
   waterGlasses: number;
   meals: Meal[];
-  userId?: string; // Added
+  userId?: string;
 }
 
 export interface ChatMessage {
@@ -55,7 +68,7 @@ export interface LibraryItem {
   item_type: 'food' | 'chart';
   item_data: any;
   created_at: string;
-  userId?: string; // Added
+  userId?: string;
 }
 
 export type Screen = 'landing' | 'onboarding' | 'home' | 'stats' | 'profile' | 'add_meal' | 'scan_food' | 'calendar' | 'notifications' | 'privacy' | 'help' | 'chat' | 'library';

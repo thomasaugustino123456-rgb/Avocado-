@@ -1,22 +1,65 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper to check if user is logged in
+    
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Rule for the users collection where document ID is the UID
-    match /users/{uid} {
-      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Generic rule for all other collections (Daily Logs, Library, etc.)
-    // Documents must have a 'userId' field matching the requester's UID
-    match /{collectionName}/{docId} {
-      allow read, write: if isSignedIn() && 
-        (resource == null || resource.data.userId == request.auth.uid) &&
-        (request.resource == null || request.resource.data.userId == request.auth.uid);
+    // Profiles & Notification settings
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // Health logs for the 'Export' feature
+    match /daily_logs/{docId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) || 
+        (resource != null && resource.data.userId == request.auth.uid)
+      );
+    }
+
+    match /Library/{docId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) || 
+        (resource != null && resource.data.userId == request.auth.uid)
+      );
+    }
+
+    match /meal_history/{docId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) || 
+        (resource != null && resource.data.userId == request.auth.uid)
+      );
+    }
+
+    match /food_scans/{docId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) || 
+        (resource != null && resource.data.userId == request.auth.uid)
+      );
+    }
+
+    match /chat_history/{docId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) || 
+        (resource != null && resource.data.userId == request.auth.uid)
+      );
+    }
+
+    // Support Messaging (Help Center)
+    match /supportMessages/{docId} {
+      allow create: if true; 
+      // Allow users to read their own messages
+      allow read: if isSignedIn() && (
+        (resource != null && resource.data.userId == request.auth.uid) ||
+        (request.auth.token.email.matches('.*admin.*'))
+      );
+      allow update, delete: if false; 
     }
   }
 }
