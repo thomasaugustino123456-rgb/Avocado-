@@ -232,7 +232,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAF5] flex flex-col lg:flex-row overflow-hidden">
       {!isStandaloneScreen && (
-        <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-gray-100 p-8 z-50 shadow-sm">
+        <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-gray-100 p-8 z-50 shadow-sm animate-in slide-in-from-left duration-700">
           <div className="flex items-center gap-4 mb-12 px-2">
             <div className="w-12 h-12 bg-[#A0C55F] rounded-2xl flex items-center justify-center font-brand font-black text-white text-2xl shadow-lg">B</div>
             <h1 className="text-2xl font-brand font-black text-[#2F3E2E]">Bito</h1>
@@ -250,9 +250,9 @@ const App: React.FC = () => {
               <button 
                 key={s}
                 onClick={() => setCurrentScreen(s as Screen)}
-                className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all w-full group ${
+                className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all w-full group active:scale-95 ${
                   currentScreen === s 
-                  ? 'bg-[#A0C55F] text-white shadow-lg shadow-[#A0C55F]/20' 
+                  ? 'bg-[#A0C55F] text-white shadow-lg shadow-[#A0C55F]/20 translate-x-1' 
                   : 'text-gray-400 hover:bg-[#F8FAF5] hover:text-[#2F3E2E]'
                 }`}
               >
@@ -271,14 +271,14 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-6xl relative min-h-full">
-           <div key={currentScreen} className="animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out fill-mode-forwards">
+           <div key={currentScreen} className="animate-in fade-in slide-in-from-bottom-6 duration-700 cubic-bezier(0.16, 1, 0.3, 1)">
              {renderScreen()}
            </div>
         </div>
       </main>
 
       {!isStandaloneScreen && (
-        <nav className="lg:hidden fixed bottom-6 left-6 right-6 bg-white/95 backdrop-blur-xl p-3 flex justify-between items-center rounded-[32px] shadow-2xl z-50 border border-white/50">
+        <nav className="lg:hidden fixed bottom-6 left-6 right-6 bg-white/95 backdrop-blur-xl p-3 flex justify-between items-center rounded-[32px] shadow-2xl z-50 border border-white/50 animate-in slide-in-from-bottom duration-700">
           {[
             { s: 'home', i: HomeIcon, l: 'Home' },
             { s: 'stats', i: PieChart, l: 'Stats' },

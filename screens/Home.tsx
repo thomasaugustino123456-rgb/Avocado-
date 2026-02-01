@@ -188,7 +188,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
   const currentMood = tempMood || mood;
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-24 relative overflow-hidden min-h-full">
+    <div className="p-4 md:p-8 lg:p-12 space-y-8 pb-24 relative overflow-hidden min-h-full">
       
       {/* Celebration Overlay */}
       {goalCelebration && (
@@ -264,7 +264,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         <div className="lg:col-span-7 space-y-10">
-          <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 animate-in slide-in-from-left-4 duration-700">
             <div className="space-y-2">
               <h2 className="text-6xl md:text-8xl font-brand font-bold text-[#2F3E2E] tracking-tighter leading-none">
                 {greeting},<br /> {user.name}!
@@ -283,7 +283,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
           </header>
 
           <div 
-            className="bg-white p-12 md:p-16 rounded-[80px] shadow-sm hover:shadow-2xl transition-all duration-700 flex flex-col md:flex-row items-center gap-14 border border-white/50 relative overflow-hidden group active:scale-[0.99] cursor-default"
+            className="bg-white p-12 md:p-16 rounded-[80px] shadow-sm hover:shadow-2xl transition-all duration-700 flex flex-col md:flex-row items-center gap-14 border border-white/50 relative overflow-hidden group active:scale-[0.98] active:shadow-inner cursor-default animate-in slide-in-from-bottom-6 duration-700 delay-100"
             onMouseMove={handleInteractionMotion}
             onTouchMove={handleInteractionMotion}
           >
@@ -320,7 +320,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
             </div>
           </div>
 
-          <div className="bg-white p-12 md:p-16 rounded-[72px] shadow-sm border border-gray-50 space-y-12 group hover:shadow-xl transition-all relative overflow-hidden">
+          <div className="bg-white p-12 md:p-16 rounded-[72px] shadow-sm border border-gray-50 space-y-12 group hover:shadow-xl hover:-translate-y-1 transition-all active:scale-[0.99] relative overflow-hidden animate-in slide-in-from-bottom-6 duration-700 delay-200">
             <div className="absolute -top-10 -right-10 w-48 h-48 bg-[#F8FAF5] rounded-full group-hover:scale-150 transition-transform duration-1000" />
             
             <div className="flex justify-between items-end relative z-10">
@@ -339,19 +339,22 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
               <div 
                 className={`h-full rounded-full transition-all duration-[2000ms] cubic-bezier(0.34, 1.56, 0.64, 1) shadow-lg relative overflow-hidden ${
                    totalCalories >= user.dailyCalorieGoal && user.dailyCalorieGoal > 0 
-                   ? 'bg-gradient-to-r from-[#A0C55F] via-yellow-300 to-[#A0C55F]' 
+                   ? 'bg-gradient-to-r from-[#A0C55F] via-yellow-300 to-[#A0C55F] animate-pulse' 
                    : 'bg-[#A0C55F]'
                 }`}
                 style={{ width: `${progressPercent}%` }}
               >
                  <div className="absolute inset-0 bg-white/30 animate-shimmer" />
+                 {progressPercent > 10 && (
+                   <div className="absolute top-0 right-0 h-full w-8 bg-white/40 blur-md translate-x-1/2" />
+                 )}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="lg:col-span-5 grid grid-cols-1 gap-10">
-          <div className={`p-12 rounded-[72px] shadow-sm space-y-10 relative overflow-hidden group hover:shadow-2xl transition-all active:scale-[0.98] border-4 ${
+        <div className="lg:col-span-5 grid grid-cols-1 gap-10 animate-in slide-in-from-right-6 duration-700 delay-300">
+          <div className={`p-12 rounded-[72px] shadow-sm space-y-10 relative overflow-hidden group hover:shadow-2xl hover:-translate-y-2 transition-all active:scale-[0.98] active:shadow-inner border-4 ${
             dailyLog.steps >= user.dailyStepGoal && user.dailyStepGoal > 0 ? 'bg-white border-[#A0C55F]' : 'bg-[#EBF7DA] border-transparent'
           }`}>
             <div className="flex justify-between items-center relative z-10">
@@ -370,7 +373,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
                 {dailyLog.steps.toLocaleString()}
               </h4>
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-[#A0C55F] rounded-full animate-pulse" />
+                <div className={`w-2 h-2 rounded-full animate-pulse ${dailyLog.steps >= user.dailyStepGoal ? 'bg-[#A0C55F]' : 'bg-[#A0C55F]/40'}`} />
                 <p className="text-[10px] font-black text-[#A0C55F] uppercase tracking-[0.4em]">Goal: {user.dailyStepGoal} steps</p>
               </div>
             </div>
@@ -379,7 +382,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
             ))}
           </div>
 
-          <div className={`p-12 rounded-[72px] shadow-sm space-y-10 relative overflow-hidden group hover:shadow-2xl transition-all active:scale-[0.98] border-4 ${
+          <div className={`p-12 rounded-[72px] shadow-sm space-y-10 relative overflow-hidden group hover:shadow-2xl hover:-translate-y-2 transition-all active:scale-[0.98] active:shadow-inner border-4 ${
             dailyLog.waterGlasses >= user.dailyWaterGoal && user.dailyWaterGoal > 0 ? 'bg-white border-blue-400' : 'bg-[#E9F3FC] border-transparent'
           }`}>
             <div className="flex justify-between items-center relative z-10">
@@ -398,7 +401,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
                 {dailyLog.waterGlasses}
               </h4>
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+                <div className={`w-2 h-2 rounded-full animate-pulse ${dailyLog.waterGlasses >= user.dailyWaterGoal ? 'bg-blue-400' : 'bg-blue-400/40'}`} />
                 <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.4em]">Goal: {user.dailyWaterGoal} glasses</p>
               </div>
             </div>
