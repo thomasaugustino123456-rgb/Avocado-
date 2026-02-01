@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { User, DailyLog } from '../types';
 import { Mascot, MascotMood } from '../components/Mascot';
 import { 
-  Footprints, Droplets, Plus, Sparkles, Heart, Lightbulb, 
-  X, Trophy, Award, CheckCircle2, Star, Zap, Flame 
+  Footprints, Droplets, Plus, Sparkles, Lightbulb, 
+  X, Award, Star, Zap, Flame 
 } from 'lucide-react';
 import { getEncouragement } from '../services/geminiService';
 import { audioService } from '../services/audioService';
@@ -38,7 +37,6 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
   const [greeting, setGreeting] = useState("Hello");
   const [showTip, setShowTip] = useState(true);
   
-  // Advanced Goal Tracking
   const [celebratedGoals, setCelebratedGoals] = useState<Set<string>>(new Set());
   const [goalCelebration, setGoalCelebration] = useState<{
     show: boolean, 
@@ -68,14 +66,12 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
     setTempMood('success');
     audioService.playGold();
     
-    // Auto-dismiss celebration
     setTimeout(() => {
       setGoalCelebration(null);
       setTempMood(null);
     }, 5000);
   }, []);
 
-  // Monitor goals and trigger celebrations
   useEffect(() => {
     const goalsToTrack = [
       { 
@@ -95,15 +91,6 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
         subtitle: 'Bito loves those moves! Keep it up! 🐾', 
         icon: <Footprints className="text-[#A0C55F] animate-bounce" size={56} />,
         color: 'from-[#A0C55F] to-[#7d9e48]'
-      },
-      { 
-        id: 'calories', 
-        current: dailyLog.meals.reduce((acc, m) => acc + m.calories, 0), 
-        target: user.dailyCalorieGoal, 
-        title: 'Energy Balanced!', 
-        subtitle: 'The perfect fuel for a perfect day! 🥑', 
-        icon: <Zap className="text-orange-400 animate-bounce" size={56} />,
-        color: 'from-orange-400 to-orange-600'
       }
     ];
 
@@ -111,7 +98,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
       if (goal.target > 0 && goal.current >= goal.target && !celebratedGoals.has(goal.id)) {
         triggerGoalCelebration(goal);
         setCelebratedGoals(prev => new Set(prev).add(goal.id));
-        break; // Only one celebration at a time
+        break;
       }
     }
   }, [dailyLog, user, celebratedGoals, triggerGoalCelebration]);
@@ -121,12 +108,10 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
 
     if (clickCount === 0) setMood('idle');
     else if (clickCount >= 1 && clickCount <= 4) setMood('happy');
-    else if (clickCount >= 5 && clickCount <= 6) setMood('little-happy');
-    else if (clickCount >= 7 && clickCount <= 8) setMood('angry');
-    else if (clickCount >= 9) setMood('very-angry');
+    else if (clickCount >= 7) setMood('angry');
 
     const resetTimer = setTimeout(() => {
-      if (mood !== 'petting' && mood !== 'very-angry' && !tempMood) {
+      if (mood !== 'petting' && !tempMood) {
         setClickCount(0);
         setMood('idle');
       }
@@ -136,8 +121,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
   }, [clickCount, mood, tempMood]);
 
   const handleInteractionMotion = (e: React.MouseEvent | React.TouchEvent) => {
-    if (mood !== 'angry' && mood !== 'very-angry' && mood !== 'annoyed') return;
-
+    if (mood !== 'angry' && mood !== 'very-angry') return;
     const currentY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const deltaY = Math.abs(currentY - lastMouseY);
     setLastMouseY(currentY);
@@ -155,18 +139,11 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
 
   const addFeedback = (type: 'water' | 'steps', val: string, e: React.MouseEvent) => {
     const rect = (e.target as HTMLElement).getBoundingClientRect();
-    const parentRect = (e.currentTarget as HTMLElement).closest('.relative')?.getBoundingClientRect() || rect;
-    
-    const x = rect.left - parentRect.left + rect.width / 2;
-    const y = rect.top - parentRect.top;
-
+    const x = rect.left + rect.width / 2;
+    const y = rect.top;
     const newFeedback: FloatingFeedback = { id: Date.now(), value: val, type, x, y };
     setFeedbacks(prev => [...prev, newFeedback]);
-    
-    setTimeout(() => {
-      setFeedbacks(prev => prev.filter(f => f.id !== newFeedback.id));
-    }, 1000);
-
+    setTimeout(() => setFeedbacks(prev => prev.filter(f => f.id !== newFeedback.id)), 1000);
     setTempMood('happy');
     setTimeout(() => setTempMood(null), 1200);
   };
@@ -193,224 +170,152 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
       {/* Celebration Overlay */}
       {goalCelebration && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#2F3E2E]/40 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-[72px] p-12 shadow-2xl border-4 border-[#A0C55F] max-w-md w-full text-center space-y-8 animate-in zoom-in-95 cubic-bezier(0.34, 1.56, 0.64, 1) duration-700 relative overflow-hidden">
-             {/* Gradient Background Decoration */}
+          <div className="bg-white rounded-[72px] p-12 shadow-2xl border-4 border-[#A0C55F] max-w-md w-full text-center space-y-8 animate-in zoom-in-95 duration-700">
              <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${goalCelebration.color}`} />
-             
-             <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex gap-4">
+             <div className="flex justify-center gap-4">
                 <Star className="text-yellow-400 animate-bounce" size={48} />
                 <Star className="text-yellow-400 animate-bounce delay-150" size={64} />
-                <Star className="text-yellow-400 animate-bounce delay-300" size={48} />
              </div>
-             
-             <div className="bg-[#F8FAF5] p-16 rounded-[56px] shadow-inner flex items-center justify-center relative group overflow-hidden">
-                <div className="absolute inset-0 bg-white/50 opacity-0 group-hover:opacity-100 transition-opacity animate-shimmer" />
+             <div className="bg-[#F8FAF5] p-12 rounded-[56px] shadow-inner flex items-center justify-center">
                 {goalCelebration.icon}
-                <Sparkles className="absolute top-4 right-4 text-yellow-400 animate-pulse" size={32} />
              </div>
-             
-             <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#EBF7DA] text-[#A0C55F] rounded-full text-[10px] font-black uppercase tracking-[0.2em]">
-                   <Award size={14} /> New Achievement
-                </div>
-                <h3 className="text-5xl font-brand font-black text-[#2F3E2E] leading-tight">
-                  {goalCelebration.title}
-                </h3>
-                <p className="text-xl text-gray-500 font-medium leading-relaxed italic">
-                  "{goalCelebration.subtitle}"
-                </p>
+             <div className="space-y-2">
+                <h3 className="text-4xl font-brand font-black text-[#2F3E2E]">{goalCelebration.title}</h3>
+                <p className="text-lg text-gray-500 font-medium italic">"{goalCelebration.subtitle}"</p>
              </div>
-
-             <button 
-              onClick={() => setGoalCelebration(null)}
-              className="w-full bg-[#A0C55F] text-white py-6 rounded-[36px] font-black text-2xl shadow-2xl shadow-[#A0C55F]/40 hover:scale-105 active:scale-95 transition-all transform"
-             >
-               Awesome job, Bito! ✨
-             </button>
-
-             {/* Animated Confetti Particles */}
-             <div className="absolute inset-0 pointer-events-none">
-                {Array.from({ length: 50 }).map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="absolute w-3 h-3 rounded-full animate-confetti" 
-                      style={{ 
-                        left: `${Math.random() * 100}%`, 
-                        backgroundColor: ['#A0C55F', '#FFE66D', '#60A5FA', '#F87171', '#C084FC'][i % 5],
-                        animationDelay: `${Math.random() * 4}s`,
-                        top: '-20px'
-                      }} 
-                    />
-                ))}
-             </div>
+             <button onClick={() => setGoalCelebration(null)} className="w-full bg-[#A0C55F] text-white py-5 rounded-[32px] font-black text-xl shadow-lg active:scale-95 transition-all">Awesome! ✨</button>
           </div>
         </div>
       )}
 
       {showTip && (
-        <div className="bg-[#FFE66D]/20 border border-[#FFE66D]/50 p-6 rounded-[32px] flex items-center gap-6 animate-in slide-in-from-top-4 relative group hover:bg-[#FFE66D]/30 transition-all">
-          <div className="bg-white p-3 rounded-2xl shadow-sm text-yellow-600 group-hover:rotate-12 transition-transform">
+        <div className="stagger-in bg-[#FFE66D]/20 border border-[#FFE66D]/50 p-6 rounded-[32px] flex items-center gap-6 relative group transition-all" style={{ animationDelay: '0s' }}>
+          <div className="bg-white p-3 rounded-2xl shadow-sm text-yellow-600">
             <Lightbulb size={24} />
           </div>
           <div className="flex-1">
-             <h4 className="font-bold text-[#2F3E2E] text-base">Pro Tip!</h4>
-             <p className="text-sm text-gray-600 font-medium italic">Bito does a happy dance when you hit your water target! Try to reach 8 glasses today. 💧</p>
+             <h4 className="font-bold text-[#2F3E2E]">Pro Tip!</h4>
+             <p className="text-sm text-gray-600 font-medium italic">Bito does a happy dance when you hit your water target! 💧</p>
           </div>
-          <button onClick={() => setShowTip(false)} className="text-gray-400 hover:text-gray-600 p-2">
-            <X size={20} />
-          </button>
+          <button onClick={() => setShowTip(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-7 space-y-10">
-          <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 animate-in slide-in-from-left-4 duration-700">
-            <div className="space-y-2">
-              <h2 className="text-6xl md:text-8xl font-brand font-bold text-[#2F3E2E] tracking-tighter leading-none">
-                {greeting},<br /> {user.name}!
-              </h2>
-              <div className="flex flex-wrap items-center gap-3 pt-4">
-                <div className="bg-[#A0C55F] text-white px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-[#A0C55F]/20 flex items-center gap-2">
-                  <Flame size={14} className="animate-pulse" /> {streak} Day Streak
-                </div>
-                {celebratedGoals.size > 0 && (
-                   <div className="bg-[#FFE66D] text-[#2F3E2E] px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2 animate-bounce">
-                     <Award size={14} /> {celebratedGoals.size} Goals Hit Today!
-                   </div>
-                )}
+          <header className="stagger-in space-y-2" style={{ animationDelay: '0.1s' }}>
+            <h2 className="text-6xl md:text-8xl font-brand font-bold text-[#2F3E2E] tracking-tighter leading-none">
+              {greeting},<br /> {user.name}!
+            </h2>
+            <div className="flex items-center gap-3 pt-4">
+              <div className="bg-[#A0C55F] text-white px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
+                <Flame size={14} className="animate-pulse" /> {streak} Day Streak
               </div>
             </div>
           </header>
 
+          {/* Mascot Card with Elevation */}
           <div 
-            className="bg-white p-12 md:p-16 rounded-[80px] shadow-sm hover:shadow-2xl transition-all duration-700 flex flex-col md:flex-row items-center gap-14 border border-white/50 relative overflow-hidden group active:scale-[0.98] active:shadow-inner cursor-default animate-in slide-in-from-bottom-6 duration-700 delay-100"
+            className="stagger-in bg-white p-12 rounded-[80px] shadow-sm hover:shadow-2xl active:scale-[0.98] transition-all duration-500 flex flex-col md:flex-row items-center gap-14 border border-white relative overflow-hidden group cursor-pointer"
+            style={{ animationDelay: '0.2s' }}
             onMouseMove={handleInteractionMotion}
-            onTouchMove={handleInteractionMotion}
+            onClick={() => setClickCount(prev => prev + 1)}
           >
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#A0C55F] via-[#FFE66D] to-[#A0C55F] opacity-20" />
-            
-            <div 
-              className="flex-shrink-0 cursor-pointer active:scale-90 transition-all relative z-10 hover:rotate-3"
-              onClick={() => setClickCount(prev => prev + 1)}
-            >
-              <Mascot size={180} mood={currentMood} />
-              {currentMood === 'very-angry' && (
-                <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] font-black px-5 py-2.5 rounded-full animate-bounce whitespace-nowrap shadow-2xl uppercase tracking-widest">
-                  GIVE ME SOME LOVE! 🐾
-                </div>
-              )}
-            </div>
-
-            <div className="relative z-10 flex-1 text-center md:text-left space-y-6">
-              <div className="flex items-center justify-center md:justify-start gap-3">
-                <div className="p-2.5 bg-[#F8FAF5] rounded-2xl text-[#A0C55F] shadow-sm">
-                  <Sparkles size={20} />
-                </div>
-                <span className="text-[10px] font-black text-[#A0C55F] uppercase tracking-[0.4em]">The Bito Feed</span>
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#A0C55F] to-[#FFE66D] opacity-20" />
+            <Mascot size={180} mood={currentMood} />
+            <div className="flex-1 text-center md:text-left space-y-4">
+              <div className="flex items-center justify-center md:justify-start gap-2">
+                <Sparkles size={18} className="text-[#A0C55F]" />
+                <span className="text-[10px] font-black text-[#A0C55F] uppercase tracking-[0.4em]">Bito Says</span>
               </div>
-              <p className="text-[#2F3E2E] text-3xl md:text-4xl font-brand font-bold leading-tight italic max-w-md">
-                {currentMood === 'very-angry' ? "WOOF! THAT TICKLES! TOO MUCH! 😡" : 
-                 currentMood === 'angry' ? "Hey! Bito needs some space! 😠" :
+              <p className="text-[#2F3E2E] text-3xl font-brand font-bold italic leading-tight">
+                {currentMood === 'angry' ? "Hey! Bito needs some space! 😠" :
                  currentMood === 'petting' ? "Mmm... I could stay here all day... ♥" :
                  currentMood === 'success' ? "WOOHOO! YOU ARE AMAZING!! 🥑✨" :
-                 currentMood === 'little-happy' ? "Hehe! You're so kind! 😊" :
-                 currentMood === 'happy' ? "YAY! Let's keep moving! 🐶" :
                  `"${encouragement}"`}
               </p>
             </div>
           </div>
 
-          <div className="bg-white p-12 md:p-16 rounded-[72px] shadow-sm border border-gray-50 space-y-12 group hover:shadow-xl hover:-translate-y-1 transition-all active:scale-[0.99] relative overflow-hidden animate-in slide-in-from-bottom-6 duration-700 delay-200">
-            <div className="absolute -top-10 -right-10 w-48 h-48 bg-[#F8FAF5] rounded-full group-hover:scale-150 transition-transform duration-1000" />
-            
-            <div className="flex justify-between items-end relative z-10">
-              <div className="space-y-2">
-                <h3 className="font-brand font-bold text-4xl text-[#2F3E2E]">Daily Fuel</h3>
-                <p className="text-xs font-black text-gray-300 uppercase tracking-[0.3em]">Calorie Progress Bar</p>
+          {/* Calorie Card with Dynamic Fill */}
+          <div className="stagger-in bg-white p-12 rounded-[72px] shadow-sm border border-gray-50 space-y-8 group hover:shadow-xl transition-all" style={{ animationDelay: '0.3s' }}>
+            <div className="flex justify-between items-end">
+              <div className="space-y-1">
+                <h3 className="font-brand font-bold text-3xl text-[#2F3E2E]">Daily Fuel</h3>
+                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Target: {user.dailyCalorieGoal} KCAL</p>
               </div>
               <div className="text-right">
-                <div className="flex items-baseline gap-2">
-                  <span className={`text-6xl font-brand font-bold transition-colors duration-500 ${totalCalories >= user.dailyCalorieGoal && user.dailyCalorieGoal > 0 ? 'text-[#A0C55F]' : 'text-[#2F3E2E]'}`}>{totalCalories}</span>
-                  <span className="text-sm font-black text-gray-300">/ {user.dailyCalorieGoal} KCAL</span>
-                </div>
+                <span className="text-5xl font-brand font-bold text-[#2F3E2E]">{totalCalories}</span>
               </div>
             </div>
-            <div className="h-14 bg-[#F8FAF5] rounded-full p-2.5 border border-gray-100 shadow-inner overflow-hidden relative z-10">
+            <div className="h-12 bg-[#F8FAF5] rounded-full p-2 border border-gray-100 shadow-inner overflow-hidden relative">
               <div 
-                className={`h-full rounded-full transition-all duration-[2000ms] cubic-bezier(0.34, 1.56, 0.64, 1) shadow-lg relative overflow-hidden ${
-                   totalCalories >= user.dailyCalorieGoal && user.dailyCalorieGoal > 0 
-                   ? 'bg-gradient-to-r from-[#A0C55F] via-yellow-300 to-[#A0C55F] animate-pulse' 
-                   : 'bg-[#A0C55F]'
-                }`}
+                className="h-full rounded-full transition-all duration-[1200ms] cubic-bezier(0.34, 1.56, 0.64, 1) shadow-lg relative bg-[#A0C55F]"
                 style={{ width: `${progressPercent}%` }}
               >
-                 <div className="absolute inset-0 bg-white/30 animate-shimmer" />
-                 {progressPercent > 10 && (
-                   <div className="absolute top-0 right-0 h-full w-8 bg-white/40 blur-md translate-x-1/2" />
-                 )}
+                 <div className="absolute inset-0 bg-white/20 animate-shimmer" />
               </div>
             </div>
           </div>
         </div>
 
-        <div className="lg:col-span-5 grid grid-cols-1 gap-10 animate-in slide-in-from-right-6 duration-700 delay-300">
-          <div className={`p-12 rounded-[72px] shadow-sm space-y-10 relative overflow-hidden group hover:shadow-2xl hover:-translate-y-2 transition-all active:scale-[0.98] active:shadow-inner border-4 ${
-            dailyLog.steps >= user.dailyStepGoal && user.dailyStepGoal > 0 ? 'bg-white border-[#A0C55F]' : 'bg-[#EBF7DA] border-transparent'
-          }`}>
-            <div className="flex justify-between items-center relative z-10">
-              <div className="bg-white p-5 rounded-[32px] shadow-md group-hover:rotate-12 transition-transform">
-                <Footprints className="text-[#A0C55F]" size={48} />
+        <div className="lg:col-span-5 grid grid-cols-1 gap-10">
+          {/* Activity Cards with Tap Elevation */}
+          {[
+            { 
+              id: 'steps', 
+              val: dailyLog.steps, 
+              target: user.dailyStepGoal, 
+              icon: Footprints, 
+              color: 'text-[#A0C55F]', 
+              bg: 'bg-[#EBF7DA]', 
+              unit: 'steps',
+              handler: handleStepAdd,
+              delay: '0.4s'
+            },
+            { 
+              id: 'water', 
+              val: dailyLog.waterGlasses, 
+              target: user.dailyWaterGoal, 
+              icon: Droplets, 
+              color: 'text-blue-500', 
+              bg: 'bg-[#E9F3FC]', 
+              unit: 'glasses',
+              handler: handleWaterAdd,
+              delay: '0.5s'
+            }
+          ].map((card) => (
+            <div 
+              key={card.id}
+              className={`stagger-in p-10 rounded-[72px] shadow-sm space-y-8 relative overflow-hidden group hover:shadow-2xl active:scale-[0.96] transition-all ${card.bg}`}
+              style={{ animationDelay: card.delay }}
+            >
+              <div className="flex justify-between items-center relative z-10">
+                <div className="bg-white p-5 rounded-[32px] shadow-md group-hover:rotate-6 transition-transform">
+                  <card.icon className={card.color} size={48} />
+                </div>
+                <button 
+                  onClick={card.handler}
+                  className="bg-white p-5 rounded-[32px] hover:scale-110 active:scale-90 transition-all shadow-xl"
+                >
+                  <Plus size={40} className="text-[#2F3E2E]" />
+                </button>
               </div>
-              <button 
-                onClick={handleStepAdd}
-                className="bg-white p-5 rounded-[32px] hover:bg-[#FFE66D] transition-all shadow-xl active:scale-90 relative hover:-translate-y-2 group-active:scale-110"
-              >
-                <Plus size={40} className="text-[#2F3E2E]" />
-              </button>
-            </div>
-            <div className="space-y-1 relative z-10">
-              <h4 className="font-brand font-bold text-7xl md:text-8xl text-[#2F3E2E] tracking-tighter">
-                {dailyLog.steps.toLocaleString()}
-              </h4>
-              <div className="flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full animate-pulse ${dailyLog.steps >= user.dailyStepGoal ? 'bg-[#A0C55F]' : 'bg-[#A0C55F]/40'}`} />
-                <p className="text-[10px] font-black text-[#A0C55F] uppercase tracking-[0.4em]">Goal: {user.dailyStepGoal} steps</p>
-              </div>
-            </div>
-            {feedbacks.filter(f => f.type === 'steps').map(f => (
-              <div key={f.id} className="absolute text-4xl font-black text-[#2F3E2E] pointer-events-none animate-float-up z-20" style={{ left: f.x, top: f.y }}>{f.value}</div>
-            ))}
-          </div>
-
-          <div className={`p-12 rounded-[72px] shadow-sm space-y-10 relative overflow-hidden group hover:shadow-2xl hover:-translate-y-2 transition-all active:scale-[0.98] active:shadow-inner border-4 ${
-            dailyLog.waterGlasses >= user.dailyWaterGoal && user.dailyWaterGoal > 0 ? 'bg-white border-blue-400' : 'bg-[#E9F3FC] border-transparent'
-          }`}>
-            <div className="flex justify-between items-center relative z-10">
-              <div className="bg-white p-5 rounded-[32px] shadow-md group-hover:-rotate-12 transition-transform">
-                <Droplets className="text-blue-500" size={48} />
-              </div>
-              <button 
-                onClick={handleWaterAdd}
-                className="bg-white p-5 rounded-[32px] hover:bg-blue-100 transition-all shadow-xl active:scale-90 relative hover:-translate-y-2 group-active:scale-110"
-              >
-                <Plus size={40} className="text-blue-500" />
-              </button>
-            </div>
-            <div className="space-y-1 relative z-10">
-              <h4 className="font-brand font-bold text-7xl md:text-8xl text-[#2F3E2E] tracking-tighter">
-                {dailyLog.waterGlasses}
-              </h4>
-              <div className="flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full animate-pulse ${dailyLog.waterGlasses >= user.dailyWaterGoal ? 'bg-blue-400' : 'bg-blue-400/40'}`} />
-                <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.4em]">Goal: {user.dailyWaterGoal} glasses</p>
+              <div className="space-y-1 relative z-10">
+                <h4 className="font-brand font-bold text-7xl text-[#2F3E2E] tracking-tighter">
+                  {card.val.toLocaleString()}
+                </h4>
+                <p className={`text-[10px] font-black ${card.color} uppercase tracking-[0.4em]`}>Goal: {card.target} {card.unit}</p>
               </div>
             </div>
-            {feedbacks.filter(f => f.type === 'water').map(f => (
-              <div key={f.id} className="absolute text-4xl font-black text-blue-600 pointer-events-none animate-float-up z-20" style={{ left: f.x, top: f.y }}>{f.value}</div>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
+      
+      {/* Floating point feedbacks */}
+      {feedbacks.map(f => (
+        <div key={f.id} className="fixed text-3xl font-black text-[#2F3E2E] pointer-events-none animate-float-up z-[200]" style={{ left: f.x, top: f.y }}>{f.value}</div>
+      ))}
     </div>
   );
 };
