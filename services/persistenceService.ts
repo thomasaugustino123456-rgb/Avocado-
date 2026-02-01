@@ -19,12 +19,17 @@ import {
 
 const convertTimestamps = (data: any): any => {
   if (!data || typeof data !== 'object') return data;
+  
+  // Clone to avoid mutating original source if needed
   const newData = Array.isArray(data) ? [...data] : { ...data };
+  
   for (const key in newData) {
     const val = newData[key];
-    if (val instanceof Timestamp) {
+    
+    // Specifically handle Firestore Timestamp objects
+    if (val && typeof val === 'object' && typeof val.toDate === 'function') {
       newData[key] = val.toDate();
-    } else if (typeof val === 'object') {
+    } else if (val && typeof val === 'object') {
       newData[key] = convertTimestamps(val);
     }
   }
@@ -253,7 +258,6 @@ export const persistenceService = {
         foodScans: []
       };
 
-      // Fetch User Profile
       try {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
@@ -261,7 +265,6 @@ export const persistenceService = {
         }
       } catch (e) { console.error("Export: User profile fetch failed", e); }
 
-      // Fetch Daily Logs
       try {
         const logsQ = query(collection(db, 'daily_logs'), where('userId', '==', currentUser.uid));
         const logsSnap = await getDocs(logsQ);
@@ -271,7 +274,6 @@ export const persistenceService = {
         throw new Error("Daily logs permission error"); 
       }
 
-      // Fetch Library
       try {
         const libQ = query(collection(db, 'Library'), where('userId', '==', currentUser.uid));
         const libSnap = await getDocs(libQ);
@@ -281,7 +283,6 @@ export const persistenceService = {
         throw new Error("Library permission error"); 
       }
 
-      // Fetch Food Scans
       try {
         const scanQ = query(collection(db, 'food_scans'), where('userId', '==', currentUser.uid));
         const scanSnap = await getDocs(scanQ);
@@ -309,9 +310,7 @@ export const persistenceService = {
     if (!currentUser) return;
     
     try {
-      // First delete user document from firestore
       await deleteDoc(doc(db, 'users', currentUser.uid));
-      // Then delete auth user
       await deleteUser(currentUser);
     } catch (err) {
       console.error("Delete account failed:", err);

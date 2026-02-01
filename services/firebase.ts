@@ -1,3 +1,4 @@
+
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
@@ -18,8 +19,6 @@ export const auth = getAuth(app);
 
 /**
  * Initialize Firestore with robust offline capabilities.
- * experimentalForceLongPolling is often required in environments where 
- * WebSockets are throttled or blocked, preventing the 10s connection timeout.
  */
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
@@ -29,5 +28,9 @@ export const db = initializeFirestore(app, {
 });
 
 if (typeof window !== 'undefined') {
-  getAnalytics(app);
+  try {
+    getAnalytics(app);
+  } catch (e) {
+    console.warn("Analytics blocked or failed to initialize");
+  }
 }
