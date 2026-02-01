@@ -237,7 +237,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
             </div>
           </div>
 
-          {/* Calorie Card with Dynamic Fill */}
+          {/* Calorie Card with Dynamic Fill & Shimmer */}
           <div className="stagger-in bg-white p-12 rounded-[72px] shadow-sm border border-gray-50 space-y-8 group hover:shadow-xl transition-all" style={{ animationDelay: '0.3s' }}>
             <div className="flex justify-between items-end">
               <div className="space-y-1">
@@ -253,6 +253,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
                 className="h-full rounded-full transition-all duration-[1200ms] cubic-bezier(0.34, 1.56, 0.64, 1) shadow-lg relative bg-[#A0C55F]"
                 style={{ width: `${progressPercent}%` }}
               >
+                 {/* Shimmer overlay */}
                  <div className="absolute inset-0 bg-white/20 animate-shimmer" />
               </div>
             </div>
@@ -287,7 +288,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
           ].map((card) => (
             <div 
               key={card.id}
-              className={`stagger-in p-10 rounded-[72px] shadow-sm space-y-8 relative overflow-hidden group hover:shadow-2xl active:scale-[0.96] transition-all ${card.bg}`}
+              className={`stagger-in p-10 rounded-[72px] shadow-sm space-y-8 relative overflow-hidden group hover:shadow-2xl active:scale-[0.96] active:shadow-inner transition-all ${card.bg}`}
               style={{ animationDelay: card.delay }}
             >
               <div className="flex justify-between items-center relative z-10">
