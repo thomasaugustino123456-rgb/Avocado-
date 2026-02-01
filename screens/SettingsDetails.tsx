@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Bell, Shield, HelpCircle, ChevronRight, Check, 
@@ -233,13 +232,13 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
               <div className="flex flex-col gap-4">
                 <div className="bg-white/60 p-4 rounded-2xl text-xs flex items-start gap-3 border border-orange-100 text-orange-800">
                   <Lock size={16} className="shrink-0 mt-0.5" />
-                  <p><b>Fix:</b> Click the <b>Lock Icon</b> next to the URL at the top of your browser. Change <b>Notifications</b> to <b>"Allow"</b>, then click the button below.</p>
+                  <p><b>Fix:</b> Click the <b>Lock Icon</b> next to the URL at the top of your browser. Change <b>Notifications</b> to <b>&quot;Allow&quot;</b>, then click the button below.</p>
                 </div>
                 <button 
                   onClick={handleManualRefreshPermission}
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-orange-600 border border-orange-200 rounded-2xl font-bold text-sm hover:shadow-md transition-all active:scale-95"
                 >
-                  <RefreshCcw size={16} /> I've unblocked it, Check now!
+                  <RefreshCcw size={16} /> I&apos;ve unblocked it, Check now!
                 </button>
               </div>
             ) : (
@@ -360,7 +359,7 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
             className="w-full bg-white text-orange-500 py-4 rounded-3xl font-bold flex items-center justify-center gap-2 hover:bg-orange-50 transition-all shadow-sm border border-orange-100"
          >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-            Delete My Account & Data
+            Delete My Account &amp; Data
          </button>
       </div>
     </div>
@@ -417,7 +416,7 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
       <div className="bg-white p-10 rounded-[56px] shadow-sm border border-gray-50 space-y-8">
          <div className="space-y-2">
             <h4 className="text-2xl font-brand font-bold text-[#2F3E2E]">Contact Support</h4>
-            <p className="text-gray-400 text-sm font-medium">Message our team and we'll reply to your email soon.</p>
+            <p className="text-gray-400 text-sm font-medium">Message our team and we&apos;ll reply to your email soon.</p>
          </div>
          <form onSubmit={handleSupportSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -439,7 +438,7 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
                />
             </div>
             <textarea 
-               placeholder="Tell us what's on your mind..." 
+               placeholder="Tell us what&apos;s on your mind..." 
                value={supportForm.message}
                onChange={(e) => setSupportForm({...supportForm, message: e.target.value})}
                className="w-full bg-gray-50 border-none rounded-[28px] p-6 font-medium h-32 focus:ring-2 focus:ring-[#A0C55F]/30 resize-none"
@@ -472,7 +471,7 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
                   </div>
                   {isAdmin && <span className="text-[10px] bg-blue-50 text-blue-400 px-2 py-0.5 rounded-full font-bold">{ticket.email}</span>}
                 </div>
-                <p className="text-[#2F3E2E] font-medium text-sm line-clamp-2 italic">"{ticket.message}"</p>
+                <p className="text-[#2F3E2E] font-medium text-sm line-clamp-2 italic">&quot;{ticket.message}&quot;</p>
               </div>
             ))}
           </div>
@@ -513,7 +512,7 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
             {notifPermission === 'denied' && (
               <div className="bg-white/50 p-4 rounded-2xl text-xs flex items-start gap-2">
                 <Settings2 size={16} className="shrink-0" />
-                <span>To fix: Go to browser settings -> Privacy & Security -> Site Settings -> Bito Health -> Notifications -> Set to <b>Allow</b>.</span>
+                <span>To fix: Go to browser settings &rarr; Privacy &amp; Security &rarr; Site Settings &rarr; Bito Health &rarr; Notifications &rarr; Set to <b>Allow</b>.</span>
               </div>
             )}
          </div>
