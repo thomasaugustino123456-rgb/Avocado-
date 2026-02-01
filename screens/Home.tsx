@@ -287,7 +287,7 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
           ].map((card) => (
             <div 
               key={card.id}
-              className={`stagger-in p-10 rounded-[72px] shadow-sm space-y-8 relative overflow-hidden group hover:shadow-2xl active:scale-[0.96] active:shadow-inner transition-all ${card.bg}`}
+              className={`stagger-in p-10 rounded-[72px] shadow-sm space-y-8 relative overflow-hidden group hover:shadow-2xl active:scale-[0.95] active:shadow-inner transition-all ${card.bg}`}
               style={{ animationDelay: card.delay }}
             >
               <div className="flex justify-between items-center relative z-10">
