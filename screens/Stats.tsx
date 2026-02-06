@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, Cell, YAxis, 
   CartesianGrid, AreaChart, Area, PieChart as RechartsPie, Pie, 
@@ -7,9 +7,10 @@ import {
 import { 
   Trophy, TrendingUp, Zap, Calendar, Target, Activity, 
   Bookmark, Check, Sparkles, Flame, Droplets, Footprints,
-  Info, Award, BrainCircuit, ChevronRight, Scale, Loader2
+  Info, Award, BrainCircuit, ChevronRight, Scale, Loader2, Save
 } from 'lucide-react';
 import { Mascot } from '../components/Mascot';
+import { audioService } from '../services/audioService';
 
 interface StatsProps {
   history?: any[];
@@ -21,81 +22,93 @@ export const Stats: React.FC<StatsProps> = ({ history = [], onSaveChart }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'activity' | 'trends'>('activity');
   const [showInsight, setShowInsight] = useState(false);
+  const [mascotMood, setMascotMood] = useState<'happy' | 'success' | 'idle'>('happy');
 
   useEffect(() => {
     const timer = setTimeout(() => setShowInsight(true), 800);
     return () => clearTimeout(timer);
   }, []);
 
+  const displayData = useMemo(() => {
+    if (history && history.length > 0) {
+      return history.map(item => ({
+        day: new Date(item.date).toLocaleDateString([], { weekday: 'short' }),
+        steps: item.steps || 0,
+        calories: item.calories || 0,
+        weight: item.weight || 70, 
+        water: item.water || 0,
+      }));
+    }
+    return [
+      { day: 'Mon', steps: 6500, calories: 1850, weight: 72.4, water: 6 },
+      { day: 'Tue', steps: 8200, calories: 2100, weight: 72.2, water: 8 },
+      { day: 'Wed', steps: 5900, calories: 1600, weight: 72.1, water: 5 },
+      { day: 'Thu', steps: 9100, calories: 2300, weight: 71.9, water: 9 },
+      { day: 'Fri', steps: 7400, calories: 1950, weight: 71.8, water: 7 },
+      { day: 'Sat', steps: 4200, calories: 2400, weight: 72.0, water: 4 },
+      { day: 'Sun', steps: 6800, calories: 1800, weight: 71.7, water: 8 },
+    ];
+  }, [history]);
+
   const handleSave = async () => {
     if (onSaveChart && !isSaving && !isSaved) {
       setIsSaving(true);
+      setMascotMood('success');
+      audioService.playIce();
       try {
         await onSaveChart(displayData);
         setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 3000);
+        setTimeout(() => {
+          setIsSaved(false);
+          setMascotMood('idle');
+        }, 4000);
       } catch (err) {
         console.error("Save failed", err);
+        setMascotMood('happy');
       } finally {
         setIsSaving(false);
       }
     }
   };
 
-  const displayData = history && history.length > 0 ? history.map(item => ({
-    day: new Date(item.date).toLocaleDateString([], { weekday: 'short' }),
-    steps: item.steps || 0,
-    calories: item.calories || 0,
-    weight: item.weight || 70, 
-    water: item.waterGlasses || 0,
-  })) : [
-    { day: 'Mon', steps: 6500, calories: 1850, weight: 72.4, water: 6 },
-    { day: 'Tue', steps: 8200, calories: 2100, weight: 72.2, water: 8 },
-    { day: 'Wed', steps: 5900, calories: 1600, weight: 72.1, water: 5 },
-    { day: 'Thu', steps: 9100, calories: 2300, weight: 71.9, water: 9 },
-    { day: 'Fri', steps: 7400, calories: 1950, weight: 71.8, water: 7 },
-    { day: 'Sat', steps: 4200, calories: 2400, weight: 72.0, water: 4 },
-    { day: 'Sun', steps: 6800, calories: 1800, weight: 71.7, water: 8 },
-  ];
-
   const healthScore = 85;
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700 relative pb-32">
+    <div className="p-4 md:p-8 lg:p-12 space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700 relative pb-40">
       <div className="absolute top-20 right-20 w-96 h-96 bg-[#A0C55F]/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-40 left-10 w-64 h-64 bg-[#FFE66D]/10 rounded-full blur-[100px] pointer-events-none" />
 
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-[#A0C55F] font-black uppercase tracking-[0.2em] text-xs">
-            <Activity size={14} className="animate-pulse" />
+      {/* Optimized Header with Save Button as per request */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10 sticky top-0 bg-[#F8FAF5]/80 backdrop-blur-md py-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-[#A0C55F] font-black uppercase tracking-[0.2em] text-[10px]">
+            <Activity size={12} className="animate-pulse" />
             Performance Analytics
           </div>
-          <h2 className="text-4xl md:text-5xl font-brand font-bold text-[#2F3E2E] tracking-tight">Your Journey</h2>
-          <p className="text-gray-400 font-medium text-lg">Visualizing your path to a healthier you 🥑</p>
+          <h2 className="text-3xl md:text-5xl font-brand font-bold text-[#2F3E2E] tracking-tight">Your Journey</h2>
         </div>
-        <div className="flex gap-4">
-          <button 
-            onClick={handleSave}
-            disabled={isSaving}
-            className={`flex items-center gap-3 px-6 py-4 rounded-3xl shadow-sm border transition-all active:scale-95 ${
-              isSaved ? 'bg-[#A0C55F] text-white border-[#A0C55F]' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
-            }`}
-          >
-            {isSaving ? <Loader2 size={20} className="animate-spin" /> : (isSaved ? <Check size={20} /> : <Bookmark size={20} />)}
-            <span className="font-bold text-sm">
-              {isSaving ? 'Archiving...' : (isSaved ? 'Saved to Library!' : 'Save Snapshot')}
-            </span>
-          </button>
-          <div className="hidden sm:flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
+        
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
             <div className="bg-[#F8FAF5] p-2 rounded-xl">
-              <Calendar size={20} className="text-[#A0C55F]" />
+              <Calendar size={18} className="text-[#A0C55F]" />
             </div>
             <div className="pr-4">
-              <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Tracking Period</p>
-              <span className="font-bold text-sm text-[#2F3E2E]">Current Week</span>
+              <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Tracking</p>
+              <span className="font-bold text-xs text-[#2F3E2E]">Last 7 Days</span>
             </div>
           </div>
+
+          <button 
+            onClick={handleSave}
+            disabled={isSaving || isSaved}
+            className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl ${
+              isSaved ? 'bg-[#A0C55F] text-white shadow-[#A0C55F]/20' : 'bg-[#2F3E2E] text-white hover:bg-[#3d4f3b] shadow-[#2F3E2E]/20'
+            } disabled:opacity-80`}
+          >
+            {isSaving ? <Loader2 size={18} className="animate-spin" /> : (isSaved ? <Check size={18} /> : <Save size={18} />)}
+            {isSaving ? 'Saving...' : (isSaved ? 'Saved!' : 'Save Snapshot')}
+          </button>
         </div>
       </header>
 
@@ -104,7 +117,7 @@ export const Stats: React.FC<StatsProps> = ({ history = [], onSaveChart }) => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#A0C55F]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
             <div className="bg-white/10 p-6 rounded-[40px] backdrop-blur-md">
-              <Mascot size={120} mood="happy" />
+              <Mascot size={120} mood={mascotMood} />
             </div>
             <div className="flex-1 space-y-4 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2">
@@ -112,10 +125,10 @@ export const Stats: React.FC<StatsProps> = ({ history = [], onSaveChart }) => {
                 <span className="text-[10px] font-black text-[#A0C55F] uppercase tracking-[0.3em]">Bito Insights</span>
               </div>
               <h3 className="text-3xl font-brand font-bold text-white leading-tight">
-                "You're smashing your hydration goals! <span className="text-[#A0C55F]">Keep glowing.</span>"
+                "You're smashing your targets! <span className="text-[#A0C55F]">Keep glowing.</span>"
               </h3>
               <p className="text-gray-400 text-lg font-medium">
-                Your consistency is up <span className="text-white font-bold">12%</span> from last week. Thursdays seem to be your high-energy day! ⚡
+                Your consistency is the foundation of your growth. Bito is happy to see you here! 🥑
               </p>
             </div>
             <div className="bg-white/5 rounded-[40px] p-8 text-center border border-white/10">
@@ -152,7 +165,7 @@ export const Stats: React.FC<StatsProps> = ({ history = [], onSaveChart }) => {
             
             <div className="h-80 w-full relative">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={displayData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={displayData} margin={{ top: 10, right: 10, left: -20, bottom: 30 }}>
                   <defs>
                     <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={activeTab === 'activity' ? "#A0C55F" : "#FFE66D"} stopOpacity={1} />
@@ -165,7 +178,7 @@ export const Stats: React.FC<StatsProps> = ({ history = [], onSaveChart }) => {
                     axisLine={false} 
                     tickLine={false} 
                     tick={{ fontSize: 13, fill: '#94A3B8', fontWeight: 700 }} 
-                    dy={15} 
+                    dy={20} 
                   />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#CBD5E1' }} />
                   <Tooltip 
@@ -205,18 +218,18 @@ export const Stats: React.FC<StatsProps> = ({ history = [], onSaveChart }) => {
                   <Droplets size={24} />
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Weekly Avg</p>
-                  <h5 className="text-xl font-bold">6.7 glasses</h5>
+                  <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Hydration Flow</p>
+                  <h5 className="text-xl font-bold">Water Tracker</h5>
                 </div>
               </div>
               <div className="h-32 w-full relative">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={displayData}>
+                  <AreaChart data={displayData} margin={{ bottom: 10 }}>
                     <Area type="monotone" dataKey="water" stroke="#60A5FA" fill="#E0F2FE" strokeWidth={3} animationDuration={2000} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-              <p className="text-sm font-bold text-gray-400 mt-4">Consistency: <span className="text-[#A0C55F]">Great</span></p>
+              <p className="text-sm font-bold text-gray-400 mt-4">Status: <span className="text-[#A0C55F]">Active</span></p>
             </div>
 
             <div className="bg-white p-8 rounded-[48px] shadow-sm border border-gray-50 flex flex-col justify-between group hover:shadow-xl transition-all">
@@ -226,17 +239,17 @@ export const Stats: React.FC<StatsProps> = ({ history = [], onSaveChart }) => {
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Weight Log</p>
-                  <h5 className="text-xl font-bold">71.7 kg</h5>
+                  <h5 className="text-xl font-bold">Progress</h5>
                 </div>
               </div>
               <div className="h-32 w-full relative">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={displayData}>
+                  <AreaChart data={displayData} margin={{ bottom: 10 }}>
                     <Area type="monotone" dataKey="weight" stroke="#A0C55F" fill="#F0F4E8" strokeWidth={3} animationDuration={2500} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-              <p className="text-sm font-bold text-gray-400 mt-4">Trend: <span className="text-[#A0C55F]">Steady</span></p>
+              <p className="text-sm font-bold text-gray-400 mt-4">Trend: <span className="text-[#A0C55F]">Consistent</span></p>
             </div>
           </div>
         </div>
@@ -252,13 +265,8 @@ export const Stats: React.FC<StatsProps> = ({ history = [], onSaveChart }) => {
               </div>
             </div>
             <div className="space-y-1">
-              <h4 className="text-4xl font-brand font-bold text-[#2F3E2E]">50k Steps</h4>
-              <p className="text-sm font-bold text-[#2F3E2E]/60 uppercase tracking-widest">Weekly Total Reached!</p>
-            </div>
-            <div className="pt-4 border-t border-black/5">
-               <button className="flex items-center gap-2 font-black text-xs text-[#2F3E2E] uppercase group-hover:gap-4 transition-all">
-                 View All Badges <ChevronRight size={14} />
-               </button>
+              <h4 className="text-4xl font-brand font-bold text-[#2F3E2E]">Snapshot View</h4>
+              <p className="text-sm font-bold text-[#2F3E2E]/60 uppercase tracking-widest">Analyze your growth</p>
             </div>
           </div>
 
@@ -285,19 +293,6 @@ export const Stats: React.FC<StatsProps> = ({ history = [], onSaveChart }) => {
                 <div className="w-3 h-3 bg-[#A0C55F] rounded-sm" />
               </div>
               <span>More</span>
-            </div>
-          </div>
-
-          <div className="bg-[#EBF7DA] p-10 rounded-[56px] text-center space-y-4 group overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-4 text-[#A0C55F]/20 group-hover:text-[#A0C55F]/40 transition-colors">
-              <Sparkles size={48} />
-            </div>
-            <Mascot size={80} mood="little-happy" className="mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-xl font-brand font-bold text-[#2F3E2E]">Stay Shiny!</h3>
-              <p className="text-[#2F3E2E]/60 text-sm font-medium leading-relaxed px-4 italic">
-                "Your Thursday activity was legendary. Can we beat it next week? 🥑"
-              </p>
             </div>
           </div>
         </div>

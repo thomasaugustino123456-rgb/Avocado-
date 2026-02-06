@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { ArrowLeft, Camera, Upload, Loader2, CheckCircle2, AlertCircle, ChevronRight, Plus, RefreshCw, Bookmark, Check } from 'lucide-react';
 import { analyzeFoodImage } from '../services/geminiService';
@@ -139,9 +140,9 @@ export const FoodScanner: React.FC<FoodScannerProps> = ({ onCancel, onAddMeal, o
       )}
 
       {image && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           <div className="space-y-6">
-            <div className="relative aspect-square rounded-[40px] overflow-hidden shadow-xl border-4 border-white">
+            <div className="relative aspect-square rounded-[56px] overflow-hidden shadow-2xl border-4 border-white">
               <img src={image} alt="Food" className="w-full h-full object-cover" />
               {isAnalyzing && (
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center text-white gap-4">
@@ -153,22 +154,22 @@ export const FoodScanner: React.FC<FoodScannerProps> = ({ onCancel, onAddMeal, o
             
             <button 
               onClick={() => { setImage(null); setAnalysis(null); setError(null); setLastFile(null); }}
-              className="w-full bg-white text-gray-400 font-bold py-4 rounded-2xl border border-gray-50 hover:bg-gray-50"
+              className="w-full bg-white text-gray-400 font-bold py-5 rounded-3xl border border-gray-100 hover:bg-gray-50 transition-all"
             >
               Scan New Photo
             </button>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-8">
             {error && (
-              <div className="bg-orange-50 p-8 rounded-[40px] border border-orange-100 space-y-4 animate-in fade-in">
+              <div className="bg-orange-50 p-10 rounded-[48px] border border-orange-100 space-y-6 animate-in fade-in">
                 <div className="flex items-start gap-4">
-                  <AlertCircle className="text-orange-400 shrink-0" size={24} />
-                  <p className="text-orange-800 font-medium">{error}</p>
+                  <AlertCircle className="text-orange-400 shrink-0" size={28} />
+                  <p className="text-orange-800 font-medium text-lg">{error}</p>
                 </div>
                 <button 
                   onClick={retryAnalysis}
-                  className="w-full bg-white text-orange-400 font-bold py-3 rounded-2xl border border-orange-100 flex items-center justify-center gap-2 hover:bg-orange-50"
+                  className="w-full bg-white text-orange-400 font-bold py-4 rounded-2xl border border-orange-100 flex items-center justify-center gap-2 hover:bg-orange-50"
                 >
                   <RefreshCw size={18} />
                   Try Again
@@ -177,30 +178,30 @@ export const FoodScanner: React.FC<FoodScannerProps> = ({ onCancel, onAddMeal, o
             )}
 
             {analysis && (
-              <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-50 space-y-6">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <h3 className="text-3xl font-brand font-bold text-[#2F3E2E]">{analysis.foodName}</h3>
-                      <p className="text-[#A0C55F] font-bold text-lg uppercase tracking-wider">{analysis.calories} kcal</p>
+              <div className="space-y-8 animate-in slide-in-from-bottom-6 duration-700">
+                <div className="bg-white p-10 md:p-12 rounded-[56px] shadow-sm border border-gray-50 space-y-8 relative">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div className="space-y-2">
+                      <h3 className="text-4xl font-brand font-bold text-[#2F3E2E] leading-tight">{analysis.foodName}</h3>
+                      <p className="text-[#A0C55F] font-black text-2xl uppercase tracking-wider">{analysis.calories} kcal</p>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 w-full sm:w-auto">
                       <button 
                         onClick={handleSaveToLib}
                         disabled={isSavingToLib}
-                        className={`p-3 rounded-2xl shadow-sm transition-all ${
+                        className={`p-4 rounded-2xl shadow-sm transition-all ${
                           isSaved ? 'bg-[#A0C55F] text-white' : 'bg-[#F8FAF5] text-[#A0C55F] hover:bg-[#DFF2C2]'
                         }`}
                       >
-                        {isSavingToLib ? <Loader2 size={20} className="animate-spin" /> : (isSaved ? <Check size={20} /> : <Bookmark size={20} />)}
+                        {isSavingToLib ? <Loader2 size={24} className="animate-spin" /> : (isSaved ? <Check size={24} /> : <Bookmark size={24} />)}
                       </button>
                       {analysis.isHealthy ? (
-                        <div className="bg-[#EBF7DA] text-[#A0C55F] px-4 py-2 rounded-2xl flex items-center gap-2 font-bold text-xs">
+                        <div className="bg-[#EBF7DA] text-[#A0C55F] px-5 py-2.5 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest whitespace-nowrap">
                           <CheckCircle2 size={16} />
                           Healthy
                         </div>
                       ) : (
-                        <div className="bg-orange-50 text-orange-400 px-4 py-2 rounded-2xl flex items-center gap-2 font-bold text-xs">
+                        <div className="bg-orange-50 text-orange-400 px-5 py-2.5 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest whitespace-nowrap">
                           <AlertCircle size={16} />
                           Balance
                         </div>
@@ -208,21 +209,21 @@ export const FoodScanner: React.FC<FoodScannerProps> = ({ onCancel, onAddMeal, o
                     </div>
                   </div>
 
-                  <p className="text-gray-600 text-lg leading-relaxed">{analysis.description}</p>
+                  <p className="text-gray-500 text-xl leading-relaxed font-medium">{analysis.description}</p>
                   
-                  <div className="bg-[#F8FAF5] p-6 rounded-3xl space-y-2">
-                    <h4 className="font-bold text-sm uppercase text-gray-400">Nutritional Highlight</h4>
-                    <p className="text-[#2F3E2E] font-medium">{analysis.nutritionSummary}</p>
+                  <div className="bg-[#F8FAF5] p-8 rounded-[32px] space-y-3 border border-gray-100/50">
+                    <h4 className="font-black text-[10px] uppercase text-gray-300 tracking-[0.4em]">Nutritional Insight</h4>
+                    <p className="text-[#2F3E2E] font-bold text-lg leading-relaxed">{analysis.nutritionSummary}</p>
                   </div>
                 </div>
 
                 <button 
                   onClick={handleAddToMeal}
                   disabled={isAdding}
-                  className="w-full bg-[#A0C55F] text-white py-6 rounded-[32px] font-bold text-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-70"
+                  className="w-full bg-[#A0C55F] text-white py-8 rounded-[40px] font-black text-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-70"
                 >
                   {isAdding ? <Loader2 className="animate-spin" size={32} /> : <Plus size={32} />}
-                  {isAdding ? 'Logging...' : 'Add to My Meals'}
+                  {isAdding ? 'Logging...' : 'Log this Meal'}
                 </button>
               </div>
             )}

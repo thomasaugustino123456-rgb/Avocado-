@@ -125,7 +125,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, isGuest, setUser, onExit
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 relative z-10">
-        {/* Left Column: Avatar & Main Info */}
         <div className="lg:col-span-4 space-y-8">
           <div className="bg-white p-10 rounded-[64px] shadow-sm border border-gray-50 flex flex-col items-center text-center gap-8 relative group overflow-hidden hover:shadow-2xl transition-all duration-700">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-[#FFE66D]" />
@@ -174,11 +173,11 @@ export const Profile: React.FC<ProfileProps> = ({ user, isGuest, setUser, onExit
                 <input 
                   value={editForm.name}
                   onChange={e => setEditForm({...editForm, name: e.target.value})}
-                  className="text-3xl font-brand font-bold text-center bg-[#F8FAF5] rounded-2xl px-6 py-3 w-full border-2 border-transparent focus:border-[#A0C55F]/30 focus:bg-white transition-all outline-none"
+                  className="text-3xl font-brand font-bold text-center bg-[#F8FAF5] rounded-2xl px-6 py-4 w-full border-2 border-transparent focus:border-[#A0C55F]/30 focus:bg-white transition-all outline-none"
                   placeholder="Your Name"
                 />
               ) : (
-                <h3 className="text-3xl font-brand font-bold text-[#2F3E2E]">{user.name}</h3>
+                <h3 className="text-3xl font-brand font-bold text-[#2F3E2E] py-2">{user.name}</h3>
               )}
               <p className="text-gray-400 font-medium text-base tracking-wide">{user.email || (isGuest ? 'Bito Guest Account' : 'Cloud Member')}</p>
             </div>
@@ -221,39 +220,38 @@ export const Profile: React.FC<ProfileProps> = ({ user, isGuest, setUser, onExit
           </div>
         </div>
 
-        {/* Right Column: Detailed Stats & Goals Editing */}
         <div className="lg:col-span-8 space-y-10">
           <div className="bg-white p-10 md:p-14 rounded-[72px] shadow-sm border border-gray-50 space-y-12 relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
                <Sparkles size={80} className="text-[#FFE66D]" />
             </div>
-            <div className="space-y-2 relative z-10">
-              <h3 className="text-2xl md:text-3xl font-brand font-bold text-[#2F3E2E]">Body Vitality</h3>
-              <p className="text-gray-400 text-sm font-medium">Keep your health profile up to date for better AI coaching.</p>
+            <div className="space-y-3 relative z-10">
+              <h3 className="text-3xl md:text-4xl font-brand font-bold text-[#2F3E2E]">Body Vitality</h3>
+              <p className="text-gray-400 text-base font-medium">Keep your health profile up to date for better AI coaching.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-5">
                 <label className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em] px-1">Physical Metrics</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-3">
                     <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Weight ({user.weightUnit})</p>
                     <input 
                       disabled={!isEditing}
                       type="number"
                       value={isEditing ? editForm.weight : user.weight}
                       onChange={e => setEditForm({...editForm, weight: parseFloat(e.target.value)})}
-                      className="w-full px-6 py-4 bg-[#F8FAF5] rounded-2xl font-bold border-2 border-transparent focus:border-[#A0C55F]/30 focus:bg-white disabled:bg-transparent disabled:text-[#2F3E2E] transition-all outline-none text-lg"
+                      className="w-full px-6 py-6 bg-[#F8FAF5] rounded-3xl font-bold border-2 border-transparent focus:border-[#A0C55F]/30 focus:bg-white disabled:bg-transparent disabled:text-[#2F3E2E] transition-all outline-none text-xl min-h-[72px]"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Height (cm)</p>
                     <input 
                       disabled={!isEditing}
                       type="number"
                       value={isEditing ? editForm.height : user.height}
                       onChange={e => setEditForm({...editForm, height: parseInt(e.target.value)})}
-                      className="w-full px-6 py-4 bg-[#F8FAF5] rounded-2xl font-bold border-2 border-transparent focus:border-[#A0C55F]/30 focus:bg-white disabled:bg-transparent disabled:text-[#2F3E2E] transition-all outline-none text-lg"
+                      className="w-full px-6 py-6 bg-[#F8FAF5] rounded-3xl font-bold border-2 border-transparent focus:border-[#A0C55F]/30 focus:bg-white disabled:bg-transparent disabled:text-[#2F3E2E] transition-all outline-none text-xl min-h-[72px]"
                     />
                   </div>
                 </div>
@@ -266,7 +264,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, isGuest, setUser, onExit
                     disabled={!isEditing}
                     value={isEditing ? editForm.goal : user.goal}
                     onChange={e => setEditForm({...editForm, goal: e.target.value})}
-                    className="w-full px-6 py-4 bg-[#F8FAF5] rounded-2xl font-bold border-2 border-transparent focus:border-[#A0C55F]/30 focus:bg-white disabled:bg-transparent disabled:text-[#2F3E2E] appearance-none transition-all outline-none text-lg shadow-sm"
+                    className="w-full px-6 py-6 bg-[#F8FAF5] rounded-3xl font-bold border-2 border-transparent focus:border-[#A0C55F]/30 focus:bg-white disabled:bg-transparent disabled:text-[#2F3E2E] appearance-none transition-all outline-none text-lg shadow-sm min-h-[72px]"
                   >
                     <option value="Be more active 🥑">Be more active 🥑</option>
                     <option value="Eat balanced meals 🥗">Eat balanced meals 🥗</option>
@@ -278,74 +276,74 @@ export const Profile: React.FC<ProfileProps> = ({ user, isGuest, setUser, onExit
               </div>
             </div>
 
-            <div className="space-y-8 pt-10 border-t border-gray-50">
+            <div className="space-y-10 pt-10 border-t border-gray-50">
               <div className="flex items-center justify-between">
-                 <h4 className="text-2xl font-brand font-bold text-[#2F3E2E] flex items-center gap-3">
-                    <Target size={24} className="text-[#A0C55F]" />
+                 <h4 className="text-2xl md:text-3xl font-brand font-bold text-[#2F3E2E] flex items-center gap-3">
+                    <Target size={28} className="text-[#A0C55F]" />
                     Daily Performance Targets
                  </h4>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                <div className="bg-[#EBF7DA] p-8 rounded-[48px] space-y-6 group hover:shadow-xl transition-all border-b-4 border-transparent hover:border-[#A0C55F]">
+                <div className="bg-[#EBF7DA] p-10 rounded-[48px] space-y-6 group hover:shadow-xl transition-all border-b-4 border-transparent hover:border-[#A0C55F]">
                   <div className="flex justify-between items-center">
-                    <div className="p-3 bg-white rounded-2xl text-[#A0C55F] shadow-sm group-hover:scale-110 transition-transform">
-                      <Footprints size={24} />
+                    <div className="p-4 bg-white rounded-2xl text-[#A0C55F] shadow-sm group-hover:scale-110 transition-transform">
+                      <Footprints size={28} />
                     </div>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <p className="text-[10px] font-black text-[#A0C55F] uppercase tracking-[0.3em]">Step Count</p>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-center gap-3 py-1">
                       <input 
                         disabled={!isEditing}
                         type="number"
                         value={isEditing ? editForm.dailyStepGoal : user.dailyStepGoal}
                         onChange={e => setEditForm({...editForm, dailyStepGoal: parseInt(e.target.value)})}
-                        className="w-full bg-transparent text-3xl font-brand font-bold text-[#2F3E2E] border-none p-0 focus:ring-0 outline-none"
+                        className="w-0 flex-1 bg-transparent text-4xl font-brand font-bold text-[#2F3E2E] border-none p-0 focus:ring-0 outline-none leading-none min-h-[44px]"
                       />
-                      <span className="text-xs font-bold text-gray-400">PTS</span>
+                      <span className="text-xs font-black text-gray-400 shrink-0">PTS</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-[#E9F3FC] p-8 rounded-[48px] space-y-6 group hover:shadow-xl transition-all border-b-4 border-transparent hover:border-blue-400">
+                <div className="bg-[#E9F3FC] p-10 rounded-[48px] space-y-6 group hover:shadow-xl transition-all border-b-4 border-transparent hover:border-blue-400">
                   <div className="flex justify-between items-center">
-                    <div className="p-3 bg-white rounded-2xl text-blue-400 shadow-sm group-hover:scale-110 transition-transform">
-                      <Droplets size={24} />
+                    <div className="p-4 bg-white rounded-2xl text-blue-400 shadow-sm group-hover:scale-110 transition-transform">
+                      <Droplets size={28} />
                     </div>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Water Intake</p>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-center gap-3 py-1">
                       <input 
                         disabled={!isEditing}
                         type="number"
                         value={isEditing ? editForm.dailyWaterGoal : user.dailyWaterGoal}
                         onChange={e => setEditForm({...editForm, dailyWaterGoal: parseInt(e.target.value)})}
-                        className="w-full bg-transparent text-3xl font-brand font-bold text-[#2F3E2E] border-none p-0 focus:ring-0 outline-none"
+                        className="w-0 flex-1 bg-transparent text-4xl font-brand font-bold text-[#2F3E2E] border-none p-0 focus:ring-0 outline-none leading-none min-h-[44px]"
                       />
-                      <span className="text-xs font-bold text-gray-400">GLS</span>
+                      <span className="text-xs font-black text-gray-400 shrink-0">GLS</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-orange-50 p-8 rounded-[48px] space-y-6 group hover:shadow-xl transition-all border-b-4 border-transparent hover:border-orange-400">
+                <div className="bg-orange-50 p-10 rounded-[48px] space-y-6 group hover:shadow-xl transition-all border-b-4 border-transparent hover:border-orange-400">
                   <div className="flex justify-between items-center">
-                    <div className="p-3 bg-white rounded-2xl text-orange-400 shadow-sm group-hover:scale-110 transition-transform">
-                      <Flame size={24} />
+                    <div className="p-4 bg-white rounded-2xl text-orange-400 shadow-sm group-hover:scale-110 transition-transform">
+                      <Flame size={28} />
                     </div>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.3em]">Active KCAL</p>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-center gap-3 py-1">
                       <input 
                         disabled={!isEditing}
                         type="number"
                         value={isEditing ? editForm.dailyCalorieGoal : user.dailyCalorieGoal}
                         onChange={e => setEditForm({...editForm, dailyCalorieGoal: parseInt(e.target.value)})}
-                        className="w-full bg-transparent text-3xl font-brand font-bold text-[#2F3E2E] border-none p-0 focus:ring-0 outline-none"
+                        className="w-0 flex-1 bg-transparent text-4xl font-brand font-bold text-[#2F3E2E] border-none p-0 focus:ring-0 outline-none leading-none min-h-[44px]"
                       />
-                      <span className="text-xs font-bold text-gray-400">CAL</span>
+                      <span className="text-xs font-black text-gray-400 shrink-0">CAL</span>
                     </div>
                   </div>
                 </div>

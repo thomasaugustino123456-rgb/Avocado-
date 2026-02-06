@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -10,54 +11,46 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Profiles & Notification settings
+    // Profiles & User Settings
     match /users/{uid} {
       allow read, write: if isOwner(uid);
     }
 
-    // Health logs for the 'Export' feature
+    // Health logs, Library, and Scans
+    // We separate read and write because request.resource is only valid for writes.
+    
     match /daily_logs/{docId} {
-      allow read, write: if isSignedIn() && (
-        (resource == null && request.resource.data.userId == request.auth.uid) || 
-        (resource != null && resource.data.userId == request.auth.uid)
-      );
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /Library/{docId} {
-      allow read, write: if isSignedIn() && (
-        (resource == null && request.resource.data.userId == request.auth.uid) || 
-        (resource != null && resource.data.userId == request.auth.uid)
-      );
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /meal_history/{docId} {
-      allow read, write: if isSignedIn() && (
-        (resource == null && request.resource.data.userId == request.auth.uid) || 
-        (resource != null && resource.data.userId == request.auth.uid)
-      );
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /food_scans/{docId} {
-      allow read, write: if isSignedIn() && (
-        (resource == null && request.resource.data.userId == request.auth.uid) || 
-        (resource != null && resource.data.userId == request.auth.uid)
-      );
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /chat_history/{docId} {
-      allow read, write: if isSignedIn() && (
-        (resource == null && request.resource.data.userId == request.auth.uid) || 
-        (resource != null && resource.data.userId == request.auth.uid)
-      );
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     // Support Messaging (Help Center)
     match /supportMessages/{docId} {
       allow create: if true; 
-      // Allow users to read their own messages
       allow read: if isSignedIn() && (
         (resource != null && resource.data.userId == request.auth.uid) ||
-        (request.auth.token.email.matches('.*admin.*'))
+        (request.auth.token.email.matches('.*admin.*')) ||
+        (request.auth.token.email.matches('.*bito.team.*'))
       );
       allow update, delete: if false; 
     }

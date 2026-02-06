@@ -1,3 +1,5 @@
+
+import { Share2, Download, Instagram, Facebook, X as CloseIcon, Smartphone, Camera as CameraIcon, Video, Wand2, Sparkles as SparklesIcon, PartyPopper, Smile, Loader2 } from 'lucide-react';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { User, DailyLog } from '../types';
 import { Mascot, MascotMood } from '../components/Mascot';
@@ -15,6 +17,8 @@ interface HomeProps {
   onUpdateWater: (amount: number) => void;
   onUpdateSteps: (amount: number) => void;
   onAddMealClick: () => void;
+  isCreatorMode?: boolean;
+  setIsCreatorMode?: (v: boolean) => void;
 }
 
 interface FloatingFeedback {
@@ -25,13 +29,16 @@ interface FloatingFeedback {
   y: number;
 }
 
-export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWater, onUpdateSteps, onAddMealClick }) => {
+export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWater, onUpdateSteps, onAddMealClick, isCreatorMode = false, setIsCreatorMode }) => {
   const [encouragement, setEncouragement] = useState("Hi friend! I'm so happy to see you! 🥑");
   const [clickCount, setClickCount] = useState(0);
   const [mood, setMood] = useState<MascotMood>('idle');
   const [tempMood, setTempMood] = useState<MascotMood | null>(null);
   const [lastMouseY, setLastMouseY] = useState(0);
   const [pettingScore, setPettingScore] = useState(0);
+  const [showShareCard, setShowShareCard] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   
   const [feedbacks, setFeedbacks] = useState<FloatingFeedback[]>([]);
   const [greeting, setGreeting] = useState("Hello");
@@ -47,13 +54,15 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
   } | null>(null);
 
   useEffect(() => {
+    if (!user?.name) return;
+
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good Morning");
     else if (hour < 18) setGreeting("Good Afternoon");
     else setGreeting("Good Evening");
 
     getEncouragement(user.name, dailyLog.steps, dailyLog.waterGlasses).then(setEncouragement);
-  }, [user.name, dailyLog.steps, dailyLog.waterGlasses]);
+  }, [user?.name, dailyLog.steps, dailyLog.waterGlasses]);
 
   const triggerGoalCelebration = useCallback((goal: any) => {
     setGoalCelebration({ 
@@ -72,7 +81,15 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
     }, 5000);
   }, []);
 
+  const triggerManualConfetti = () => {
+    setShowConfetti(true);
+    audioService.playGold();
+    setTimeout(() => setShowConfetti(false), 3000);
+  };
+
   useEffect(() => {
+    if (!user) return;
+
     const goalsToTrack = [
       { 
         id: 'water', 
@@ -102,6 +119,26 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
       }
     }
   }, [dailyLog, user, celebratedGoals, triggerGoalCelebration]);
+
+  const handleNativeShare = async () => {
+    if (!user) return;
+    if (navigator.share) {
+      setIsSharing(true);
+      try {
+        await navigator.share({
+          title: `Bito Health - ${user.name}'s Progress`,
+          text: `Check out Bito! I've taken ${dailyLog.steps} steps and drank ${dailyLog.waterGlasses} glasses of water today. 🥑✨`,
+          url: 'https://getbito.vercel.app',
+        });
+      } catch (err) {
+        console.log("Share failed or cancelled");
+      } finally {
+        setIsSharing(false);
+      }
+    } else {
+      alert("Sharing isn't supported on this browser. Just take a screenshot of the card! 📸");
+    }
+  };
 
   useEffect(() => {
     if (mood === 'petting' || tempMood) return;
@@ -161,49 +198,99 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
   };
 
   const totalCalories = useMemo(() => dailyLog.meals.reduce((acc, meal) => acc + meal.calories, 0), [dailyLog.meals]);
-  const progressPercent = Math.min(100, (totalCalories / user.dailyCalorieGoal) * 100);
+  const progressPercent = user ? Math.min(100, (totalCalories / user.dailyCalorieGoal) * 100) : 0;
   const currentMood = tempMood || mood;
 
+  if (!user) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-[#F8FAF5]">
+        <Loader2 className="animate-spin text-[#A0C55F]" size={48} />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 md:p-8 lg:p-12 space-y-8 pb-24 relative overflow-hidden min-h-full">
+    <div className={`p-4 md:p-8 lg:p-12 space-y-8 pb-32 relative transition-all duration-700 ${isCreatorMode ? 'bg-white' : ''}`}>
       
-      {/* Celebration Overlay */}
-      {goalCelebration && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#2F3E2E]/40 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-[72px] p-12 shadow-2xl border-4 border-[#A0C55F] max-w-md w-full text-center space-y-8 animate-in zoom-in-95 duration-700">
-             <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${goalCelebration.color}`} />
-             <div className="flex justify-center gap-4">
-                <Star className="text-yellow-400 animate-bounce" size={48} />
-                <Star className="text-yellow-400 animate-bounce delay-150" size={64} />
-             </div>
-             <div className="bg-[#F8FAF5] p-12 rounded-[56px] shadow-inner flex items-center justify-center">
-                {goalCelebration.icon}
-             </div>
-             <div className="space-y-2">
-                <h3 className="text-4xl font-brand font-black text-[#2F3E2E]">{goalCelebration.title}</h3>
-                <p className="text-lg text-gray-500 font-medium italic">"{goalCelebration.subtitle}"</p>
-             </div>
-             <button onClick={() => setGoalCelebration(null)} className="w-full bg-[#A0C55F] text-white py-5 rounded-[32px] font-black text-xl shadow-lg active:scale-95 transition-all">Awesome! ✨</button>
-          </div>
+      {showConfetti && (
+        <div className="fixed inset-0 pointer-events-none z-[1000] overflow-hidden">
+          {Array.from({ length: 30 }).map((_, i) => (
+            <div 
+              key={i} 
+              className="absolute w-4 h-4 rounded-sm animate-confetti-fall"
+              style={{
+                left: `${Math.random() * 100}%`,
+                backgroundColor: ['#A0C55F', '#FFE66D', '#FFB347', '#60A5FA'][Math.floor(Math.random() * 4)],
+                animationDelay: `${Math.random() * 2}s`,
+                top: '-20px'
+              }}
+            />
+          ))}
         </div>
       )}
 
-      {showTip && (
-        <div className="stagger-in bg-[#FFE66D]/20 border border-[#FFE66D]/50 p-6 rounded-[32px] flex items-center gap-6 relative group transition-all" style={{ animationDelay: '0s' }}>
-          <div className="bg-white p-3 rounded-2xl shadow-sm text-yellow-600">
-            <Lightbulb size={24} />
-          </div>
-          <div className="flex-1">
-             <h4 className="font-bold text-[#2F3E2E]">Pro Tip!</h4>
-             <p className="text-sm text-gray-600 font-medium italic">Bito does a happy dance when you hit your water target! 💧</p>
-          </div>
-          <button onClick={() => setShowTip(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+      {isCreatorMode && (
+        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[300] flex gap-4 bg-[#2F3E2E] p-4 rounded-[40px] shadow-2xl animate-in slide-in-from-bottom-10 border-4 border-white/20">
+           <button onClick={() => setTempMood('happy')} className="p-4 bg-white/10 text-white rounded-3xl hover:bg-white/20 transition-all"><Smile size={24} /></button>
+           <button onClick={() => setTempMood('success')} className="p-4 bg-white/10 text-white rounded-3xl hover:bg-white/20 transition-all"><Zap size={24} /></button>
+           <button onClick={() => setTempMood('angry')} className="p-4 bg-white/10 text-white rounded-3xl hover:bg-white/20 transition-all"><Flame size={24} /></button>
+           <button onClick={triggerManualConfetti} className="p-4 bg-[#FFE66D] text-[#2F3E2E] rounded-3xl hover:scale-105 transition-all"><PartyPopper size={24} /></button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-7 space-y-10">
-          <header className="stagger-in space-y-2" style={{ animationDelay: '0.1s' }}>
+      {showShareCard && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#2F3E2E]/90 backdrop-blur-2xl animate-in fade-in duration-300">
+           <div className="bg-white rounded-[56px] max-w-lg w-full overflow-hidden shadow-2xl animate-in zoom-in-95 duration-500 flex flex-col border border-white/20">
+              <div id="capture-card" className="p-10 text-center space-y-8 bg-gradient-to-b from-[#F8FAF5] to-white relative">
+                 <button onClick={() => setShowShareCard(false)} className="absolute top-6 right-6 p-3 bg-white shadow-md rounded-2xl hover:bg-gray-50 transition-all z-10"><CloseIcon size={24} /></button>
+                 
+                 <div className="space-y-2 pt-4">
+                    <div className="flex items-center justify-center gap-2">
+                       <div className="w-8 h-8 bg-[#A0C55F] rounded-lg flex items-center justify-center font-brand font-black text-white text-sm">B</div>
+                       <p className="text-[10px] font-black text-[#A0C55F] uppercase tracking-[0.4em]">Bito Daily Wins</p>
+                    </div>
+                    <h3 className="text-4xl font-brand font-bold text-[#2F3E2E] leading-tight tracking-tight">
+                       Look what <span className="text-[#A0C55F]">{user.name}</span> <br/>did today!
+                    </h3>
+                 </div>
+
+                 <div className="bg-white p-14 rounded-[72px] shadow-2xl border-4 border-[#DFF2C2] relative group">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-[#A0C55F]/5 to-transparent rounded-[68px]" />
+                    <Mascot size={200} mood="success" />
+                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-[#A0C55F] text-white px-8 py-3 rounded-full font-black text-sm uppercase tracking-widest shadow-lg">Level Up! 🥑✨</div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-6">
+                    <div className="bg-[#EBF7DA] p-8 rounded-[40px] space-y-2 shadow-sm border border-white">
+                       <Footprints className="text-[#A0C55F] mx-auto mb-2" size={28} />
+                       <p className="text-3xl font-brand font-bold text-[#2F3E2E]">{dailyLog.steps.toLocaleString()}</p>
+                       <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Steps Walked</p>
+                    </div>
+                    <div className="bg-[#E9F3FC] p-8 rounded-[40px] space-y-2 shadow-sm border border-white">
+                       <Droplets className="text-blue-500 mx-auto mb-2" size={28} />
+                       <p className="text-3xl font-brand font-bold text-[#2F3E2E]">{dailyLog.waterGlasses}</p>
+                       <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Water Glasses</p>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="p-8 bg-[#A0C55F] space-y-4">
+                 <button 
+                    onClick={handleNativeShare}
+                    disabled={isSharing}
+                    className="w-full bg-white py-5 rounded-3xl font-black text-[#2F3E2E] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+                  >
+                    {isSharing ? <Loader2 className="animate-spin" /> : <Share2 size={24} />}
+                    Share Progress
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {!isCreatorMode && (
+        <header className="stagger-in flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6" style={{ animationDelay: '0.1s' }}>
+          <div className="space-y-2">
             <h2 className="text-6xl md:text-8xl font-brand font-bold text-[#2F3E2E] tracking-tighter leading-none">
               {greeting},<br /> {user.name}!
             </h2>
@@ -212,23 +299,36 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
                 <Flame size={14} className="animate-pulse" /> {streak} Day Streak
               </div>
             </div>
-          </header>
+          </div>
 
-          {/* Mascot Card with Elevation */}
+          <button 
+            onClick={() => setShowShareCard(true)}
+            className="px-8 py-5 bg-[#2F3E2E] text-white rounded-[32px] font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3 hover:bg-[#3d4f3b] transition-all shadow-xl active:scale-95 group"
+          >
+             <Smartphone size={18} className="group-hover:rotate-12 transition-transform" /> 
+             Promote Bito
+          </button>
+        </header>
+      )}
+
+      <div className={`grid grid-cols-1 ${isCreatorMode ? '' : 'lg:grid-cols-12'} gap-10`}>
+        <div className={`${isCreatorMode ? 'w-full flex flex-col items-center' : 'lg:col-span-7'} space-y-10`}>
           <div 
-            className="stagger-in bg-white p-12 rounded-[80px] shadow-sm hover:shadow-2xl active:scale-[0.98] transition-all duration-500 flex flex-col md:flex-row items-center gap-14 border border-white relative overflow-hidden group cursor-pointer"
+            className={`stagger-in ${isCreatorMode ? 'bg-transparent border-none shadow-none max-w-2xl' : 'bg-white p-12 rounded-[80px] shadow-sm hover:shadow-2xl'} active:scale-[0.98] transition-all duration-500 flex flex-col md:flex-row items-center gap-14 border border-white relative group cursor-pointer`}
             style={{ animationDelay: '0.2s' }}
             onMouseMove={handleInteractionMotion}
             onClick={() => setClickCount(prev => prev + 1)}
           >
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#A0C55F] to-[#FFE66D] opacity-20" />
-            <Mascot size={180} mood={currentMood} />
-            <div className="flex-1 text-center md:text-left space-y-4">
-              <div className="flex items-center justify-center md:justify-start gap-2">
-                <Sparkles size={18} className="text-[#A0C55F]" />
-                <span className="text-[10px] font-black text-[#A0C55F] uppercase tracking-[0.4em]">Bito Says</span>
-              </div>
-              <p className="text-[#2F3E2E] text-3xl font-brand font-bold italic leading-tight">
+            {!isCreatorMode && <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#A0C55F] to-[#FFE66D] opacity-20" />}
+            <Mascot size={isCreatorMode ? 320 : 180} mood={currentMood} />
+            <div className={`flex-1 ${isCreatorMode ? 'text-center' : 'text-center md:text-left'} space-y-4`}>
+              {!isCreatorMode && (
+                <div className="flex items-center gap-2 justify-center md:justify-start">
+                  <Sparkles size={18} className="text-[#A0C55F]" />
+                  <span className="text-[10px] font-black text-[#A0C55F] uppercase tracking-[0.4em]">Bito Says</span>
+                </div>
+              )}
+              <p className={`text-[#2F3E2E] ${isCreatorMode ? 'text-5xl' : 'text-3xl'} font-brand font-bold italic leading-tight`}>
                 {currentMood === 'angry' ? "Hey! Bito needs some space! 😠" :
                  currentMood === 'petting' ? "Mmm... I could stay here all day... ♥" :
                  currentMood === 'success' ? "WOOHOO! YOU ARE AMAZING!! 🥑✨" :
@@ -236,86 +336,91 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
               </p>
             </div>
           </div>
-
-          {/* Calorie Card with Dynamic Fill & Shimmer */}
-          <div className="stagger-in bg-white p-12 rounded-[72px] shadow-sm border border-gray-50 space-y-8 group hover:shadow-xl transition-all" style={{ animationDelay: '0.3s' }}>
-            <div className="flex justify-between items-end">
-              <div className="space-y-1">
-                <h3 className="font-brand font-bold text-3xl text-[#2F3E2E]">Daily Fuel</h3>
-                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Target: {user.dailyCalorieGoal} KCAL</p>
-              </div>
-              <div className="text-right">
-                <span className="text-5xl font-brand font-bold text-[#2F3E2E]">{totalCalories}</span>
-              </div>
-            </div>
-            <div className="h-12 bg-[#F8FAF5] rounded-full p-2 border border-gray-100 shadow-inner overflow-hidden relative">
-              <div 
-                className="h-full rounded-full transition-all duration-[1200ms] cubic-bezier(0.34, 1.56, 0.64, 1) shadow-lg relative bg-[#A0C55F]"
-                style={{ width: `${progressPercent}%` }}
-              >
-                 <div className="absolute inset-0 bg-white/20 animate-shimmer" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-5 grid grid-cols-1 gap-10">
-          {/* Activity Cards with Tap Elevation */}
-          {[
-            { 
-              id: 'steps', 
-              val: dailyLog.steps, 
-              target: user.dailyStepGoal, 
-              icon: Footprints, 
-              color: 'text-[#A0C55F]', 
-              bg: 'bg-[#EBF7DA]', 
-              unit: 'steps',
-              handler: handleStepAdd,
-              delay: '0.4s'
-            },
-            { 
-              id: 'water', 
-              val: dailyLog.waterGlasses, 
-              target: user.dailyWaterGoal, 
-              icon: Droplets, 
-              color: 'text-blue-500', 
-              bg: 'bg-[#E9F3FC]', 
-              unit: 'glasses',
-              handler: handleWaterAdd,
-              delay: '0.5s'
-            }
-          ].map((card) => (
-            <div 
-              key={card.id}
-              className={`stagger-in p-10 rounded-[72px] shadow-sm space-y-8 relative overflow-hidden group hover:shadow-2xl active:scale-[0.95] active:shadow-inner transition-all ${card.bg}`}
-              style={{ animationDelay: card.delay }}
-            >
-              <div className="flex justify-between items-center relative z-10">
-                <div className="bg-white p-5 rounded-[32px] shadow-md group-hover:rotate-6 transition-transform">
-                  <card.icon className={card.color} size={48} />
+          
+          {!isCreatorMode && (
+            <div className="stagger-in bg-white p-12 rounded-[72px] shadow-sm border border-gray-50 space-y-8 group hover:shadow-xl transition-all" style={{ animationDelay: '0.3s' }}>
+              <div className="flex justify-between items-end">
+                <div className="space-y-1">
+                  <h3 className="font-brand font-bold text-3xl text-[#2F3E2E]">Daily Fuel</h3>
+                  <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Target: {user.dailyCalorieGoal} KCAL</p>
                 </div>
-                <button 
-                  onClick={card.handler}
-                  className="bg-white p-5 rounded-[32px] hover:scale-110 active:scale-90 transition-all shadow-xl"
-                >
-                  <Plus size={40} className="text-[#2F3E2E]" />
-                </button>
+                <div className="text-right">
+                  <span className="text-5xl font-brand font-bold text-[#2F3E2E]">{totalCalories}</span>
+                </div>
               </div>
-              <div className="space-y-1 relative z-10">
-                <h4 className="font-brand font-bold text-7xl text-[#2F3E2E] tracking-tighter">
-                  {card.val.toLocaleString()}
-                </h4>
-                <p className={`text-[10px] font-black ${card.color} uppercase tracking-[0.4em]`}>Goal: {card.target} {card.unit}</p>
+              <div className="h-12 bg-[#F8FAF5] rounded-full p-2 border border-gray-100 shadow-inner overflow-hidden relative">
+                <div 
+                  className="h-full rounded-full transition-all duration-[1200ms] cubic-bezier(0.34, 1.56, 0.64, 1) shadow-lg relative bg-[#A0C55F]"
+                  style={{ width: `${progressPercent}%` }}
+                >
+                   <div className="absolute inset-0 bg-white/20 animate-shimmer" />
+                </div>
               </div>
             </div>
-          ))}
+          )}
         </div>
+
+        {!isCreatorMode && (
+          <div className="lg:col-span-5 grid grid-cols-1 gap-10">
+            {[
+              { 
+                id: 'steps', 
+                val: dailyLog.steps, 
+                target: user.dailyStepGoal, 
+                icon: Footprints, 
+                color: 'text-[#A0C55F]', 
+                bg: 'bg-[#EBF7DA]', 
+                unit: 'steps',
+                handler: handleStepAdd,
+                delay: '0.4s'
+              },
+              { 
+                id: 'water', 
+                val: dailyLog.waterGlasses, 
+                target: user.dailyWaterGoal, 
+                icon: Droplets, 
+                color: 'text-blue-500', 
+                bg: 'bg-[#E9F3FC]', 
+                unit: 'glasses',
+                handler: handleWaterAdd,
+                delay: '0.5s'
+              }
+            ].map((card) => (
+              <div 
+                key={card.id}
+                className={`stagger-in p-10 rounded-[72px] shadow-sm space-y-8 relative overflow-hidden group hover:shadow-2xl active:scale-[0.95] active:shadow-inner transition-all ${card.bg}`}
+                style={{ animationDelay: card.delay }}
+              >
+                <div className="flex justify-between items-center relative z-10">
+                  <div className="bg-white p-5 rounded-[32px] shadow-md group-hover:rotate-6 transition-transform">
+                    <card.icon className={card.color} size={48} />
+                  </div>
+                  <button 
+                    onClick={card.handler}
+                    className="bg-white p-5 rounded-[32px] hover:scale-110 active:scale-90 transition-all shadow-xl"
+                  >
+                    <Plus size={40} className="text-[#2F3E2E]" />
+                  </button>
+                </div>
+                <div className="space-y-1 relative z-10">
+                  <h4 className="font-brand font-bold text-7xl text-[#2F3E2E] tracking-tighter">
+                    {card.val.toLocaleString()}
+                  </h4>
+                  <p className={`text-[10px] font-black ${card.color} uppercase tracking-[0.4em]`}>Goal: {card.target} {card.unit}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      
-      {/* Floating point feedbacks */}
-      {feedbacks.map(f => (
-        <div key={f.id} className="fixed text-3xl font-black text-[#2F3E2E] pointer-events-none animate-float-up z-[200]" style={{ left: f.x, top: f.y }}>{f.value}</div>
-      ))}
+
+      <style>{`
+        @keyframes confetti-fall {
+          0% { transform: translateY(0) rotate(0); opacity: 1; }
+          100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        .animate-confetti-fall { animation: confetti-fall 3s linear forwards; }
+      `}</style>
     </div>
   );
 };
