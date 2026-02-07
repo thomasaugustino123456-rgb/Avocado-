@@ -5,7 +5,7 @@ import {
   Trash2, Download, Send, AlertCircle, Info, Lock, Globe, 
   Zap, Droplets, Clock, Flame, Loader2, Smile, BellRing, Settings2, RefreshCcw,
   MessageSquare, History, UserCheck, Smartphone, CheckCircle2, Copy, Terminal,
-  AlertTriangle, PlayCircle, X
+  AlertTriangle, PlayCircle, X, ExternalLink
 } from 'lucide-react';
 import { User, Screen, UserSettings } from '../types';
 import { persistenceService } from '../services/persistenceService';
@@ -83,7 +83,7 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
   const copyToken = () => {
     if (fcmToken) {
       navigator.clipboard.writeText(fcmToken);
-      setSuccess("Bito Address Copied! 📋");
+      setSuccess("FCM Token Copied! 📋");
       setTimeout(() => setSuccess(null), 3000);
     }
   };
@@ -127,7 +127,7 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
     <div className="space-y-6">
       {/* ERROR DISPLAY */}
       {error && (
-        <div className="bg-red-50 border-2 border-red-100 p-8 rounded-[40px] flex flex-col md:flex-row items-center gap-6 animate-in zoom-in-95">
+        <div className="bg-red-50 border-2 border-red-100 p-8 rounded-[40px] flex flex-col md:flex-row items-center gap-6 animate-in zoom-in-95 shadow-lg">
           <div className="p-4 bg-white rounded-2xl shadow-sm text-red-500">
             <AlertTriangle size={32} />
           </div>
@@ -181,22 +181,47 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
 
       {/* Advanced Debug Section for Developer */}
       {notifPermission === 'granted' && fcmToken && (
-        <div className="bg-[#2F3E2E] p-8 rounded-[48px] border border-white/10 space-y-6 shadow-2xl animate-in zoom-in-95">
-           <div className="flex items-center gap-3 text-[#A0C55F]">
-              <Terminal size={18} />
-              <h4 className="text-[10px] font-black uppercase tracking-[0.4em]">Developer Test Mode</h4>
-           </div>
-           <p className="text-gray-400 text-sm font-medium">Use this <b>Device Address</b> in the Firebase Console "Test on Device" tool to verify your cloud connection works!</p>
-           <div className="flex items-center gap-2">
-              <div className="flex-1 bg-black/30 p-4 rounded-2xl text-white font-mono text-[10px] overflow-hidden truncate opacity-60 select-all">
-                 {fcmToken}
+        <div className="bg-[#2F3E2E] p-8 md:p-12 rounded-[48px] border border-white/10 space-y-6 shadow-2xl animate-in zoom-in-95 border-l-8 border-l-[#A0C55F]">
+           <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 text-[#A0C55F]">
+                 <Terminal size={20} />
+                 <h4 className="text-[12px] font-black uppercase tracking-[0.4em]">Developer Test Lab</h4>
               </div>
-              <button 
-                onClick={copyToken}
-                className="bg-[#A0C55F] p-4 rounded-2xl text-white hover:scale-105 active:scale-90 transition-all shadow-lg"
+              <div className="flex items-center gap-2 text-white/40 text-[10px] font-black uppercase tracking-widest">
+                 <div className="w-2 h-2 bg-[#A0C55F] rounded-full animate-pulse" />
+                 FCM Active
+              </div>
+           </div>
+           
+           <div className="space-y-4">
+              <p className="text-gray-400 text-sm font-medium leading-relaxed">
+                To test Bito from the Firebase Console, copy your <b>FCM Registration Token</b> below and paste it into the "Test on Device" popup.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row items-stretch gap-3">
+                 <div className="flex-1 bg-black/40 p-5 rounded-3xl text-[#A0C55F] font-mono text-[11px] overflow-hidden truncate border border-white/5 relative group cursor-pointer hover:bg-black/60 transition-all" onClick={copyToken}>
+                    <div className="absolute inset-0 bg-[#A0C55F]/5 animate-pulse" />
+                    <span className="relative z-10">{fcmToken}</span>
+                 </div>
+                 <button 
+                   onClick={copyToken}
+                   className="bg-[#A0C55F] px-8 py-5 rounded-3xl text-[#2F3E2E] font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg flex items-center justify-center gap-3 shrink-0"
+                 >
+                   <Copy size={20} />
+                   Copy Token
+                 </button>
+              </div>
+           </div>
+
+           <div className="pt-4 border-t border-white/5">
+              <a 
+                href="https://console.firebase.google.com/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-white/30 text-[10px] font-black uppercase tracking-widest hover:text-[#A0C55F] transition-colors"
               >
-                <Copy size={20} />
-              </button>
+                Open Firebase Console <ExternalLink size={12} />
+              </a>
            </div>
         </div>
       )}
