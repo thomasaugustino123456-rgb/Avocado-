@@ -4,13 +4,15 @@ import {
   ArrowLeft, Bell, Shield, HelpCircle, ChevronRight, Check, 
   Trash2, Download, Send, AlertCircle, Info, Lock, Globe, 
   Zap, Droplets, Clock, Flame, Loader2, Smile, BellRing, Settings2, RefreshCcw,
-  MessageSquare, History, UserCheck, Smartphone, CheckCircle2, Copy, Terminal
+  MessageSquare, History, UserCheck, Smartphone, CheckCircle2, Copy, Terminal,
+  AlertTriangle, PlayCircle, X
 } from 'lucide-react';
 import { User, Screen, UserSettings } from '../types';
 import { persistenceService } from '../services/persistenceService';
 import { messaging } from '../services/firebase';
 import { getToken } from 'firebase/messaging';
 import { Mascot } from '../components/Mascot';
+import { audioService } from '../services/audioService';
 
 interface SettingsDetailsProps {
   type: 'notifications' | 'privacy' | 'help';
@@ -23,9 +25,6 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
-  const [supportHistory, setSupportHistory] = useState<any[]>([]);
-  const [supportForm, setSupportForm] = useState({ name: user.name, email: user.email || '', message: '' });
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
@@ -36,33 +35,55 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
     privacy: { libraryPublic: false }
   };
 
-  // Sync token periodically if permission is granted
-  useEffect(() => {
-    if (notifPermission === 'granted') {
-      syncCloudToken();
-    }
-  }, [notifPermission]);
+  const VAPID_KEY = 'BO0Rz9AB9uKWj7qtWWqcJUG3B0X8QRVe5WR40zS6NFVlNkVm5xu8G95ktzkVU9bkAiZ58K_2M7zS_LOjrDYCkEg';
 
   const syncCloudToken = async () => {
-    if (!messaging) return;
+    if (!messaging) {
+      setError("Firebase Messaging is not supported in this browser environment.");
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+
     try {
-      // Updated with User's Real VAPID Key
-      const VAPID_KEY = 'BO0Rz9AB9uKWj7qtWWqcJUG3B0X8QRVe5WR40zS6NFVlNkVm5xu8G95ktzkVU9bkAiZ58K_2M7zS_LOjrDYCkEg';
-      
       const token = await getToken(messaging, { vapidKey: VAPID_KEY });
       if (token) {
         setFcmToken(token);
         await persistenceService.saveMessagingToken(token);
+        setSuccess("Cloud Link Established! 🥑✨");
+        audioService.playGold();
+      } else {
+        setError("Could not generate a device token. Please try again.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("FCM Token Error:", err);
+      if (err.code === 'messaging/permission-blocked') {
+        setError("Notifications are blocked! Please click the 'Lock' icon in your browser URL bar and set Notifications to 'Allow'.");
+      } else {
+        setError("Connection failed: " + (err.message || "Unknown error"));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const triggerLocalTest = () => {
+    if (Notification.permission === 'granted') {
+      new Notification("Bito Test Nudge! 🥑", {
+        body: "Success! This is exactly how your healthy habit reminders will look.",
+        icon: 'https://img.icons8.com/emoji/96/000000/avocado-emoji.png'
+      });
+      setSuccess("Test Sent! Check your desktop notifications. 🔔");
+    } else {
+      setError("Enable Cloud Nudges first to send a test!");
     }
   };
 
   const copyToken = () => {
     if (fcmToken) {
       navigator.clipboard.writeText(fcmToken);
-      setSuccess("Bito Address Copied! 🥑📋");
+      setSuccess("Bito Address Copied! 📋");
       setTimeout(() => setSuccess(null), 3000);
     }
   };
@@ -88,30 +109,73 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
   };
 
   const requestPermission = async () => {
+    if (notifPermission === 'denied') {
+       setError("Permission was previously denied. You must manually allow notifications in your browser settings to continue.");
+       return;
+    }
+
     const permission = await Notification.requestPermission();
     setNotifPermission(permission);
     if (permission === 'granted') {
       await syncCloudToken();
-      setSuccess("Bito is now linked to the cloud! 🥑✨");
+    } else {
+      setError("Notification access was not granted.");
     }
   };
 
   const renderNotifications = () => (
     <div className="space-y-6">
+      {/* ERROR DISPLAY */}
+      {error && (
+        <div className="bg-red-50 border-2 border-red-100 p-8 rounded-[40px] flex flex-col md:flex-row items-center gap-6 animate-in zoom-in-95">
+          <div className="p-4 bg-white rounded-2xl shadow-sm text-red-500">
+            <AlertTriangle size={32} />
+          </div>
+          <div className="flex-1 text-center md:text-left">
+            <p className="font-bold text-red-800 text-lg">Bito encountered a hitch!</p>
+            <p className="text-red-600/70 font-medium">{error}</p>
+          </div>
+          <button onClick={() => setError(null)} className="p-2 text-red-300 hover:text-red-500 transition-colors"><X /></button>
+        </div>
+      )}
+
       {/* Cloud Sync Hero Card */}
-      <div className={`p-10 rounded-[56px] border flex flex-col md:flex-row items-center gap-8 group transition-all duration-500 shadow-sm ${notifPermission === 'granted' ? 'bg-[#A0C55F]/5 border-[#A0C55F]/20' : 'bg-white border-gray-100'}`}>
-         <div className="p-6 rounded-[40px] shadow-sm bg-white">
-            {notifPermission === 'granted' ? <BellRing size={64} className="text-[#A0C55F] animate-bounce" /> : <Bell size={64} className="text-gray-300" />}
+      <div className={`p-10 rounded-[56px] border-2 flex flex-col md:flex-row items-center gap-8 group transition-all duration-500 shadow-sm ${notifPermission === 'granted' ? 'bg-[#A0C55F]/5 border-[#A0C55F]/20' : 'bg-white border-gray-100'}`}>
+         <div className="p-6 rounded-[40px] shadow-sm bg-white relative">
+            {notifPermission === 'granted' ? (
+              <>
+                <BellRing size={64} className="text-[#A0C55F] animate-bounce" />
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-[#A0C55F] rounded-full border-4 border-white animate-pulse" />
+              </>
+            ) : <Bell size={64} className="text-gray-300" />}
          </div>
          <div className="space-y-4 text-center md:text-left flex-1">
             <div className="flex items-center justify-center md:justify-start gap-2">
                <h3 className="text-2xl font-brand font-bold text-[#2F3E2E]">Cloud Nudge Network</h3>
-               {notifPermission === 'granted' && <div className="bg-[#A0C55F] text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest">Active</div>}
+               {notifPermission === 'granted' && <div className="bg-[#A0C55F] text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest">Linked</div>}
             </div>
-            <p className="text-gray-500 font-medium">Bito uses Firebase Cloud Messaging to send Duolingo-style alerts. This keeps you motivated even when the app is closed!</p>
-            <button onClick={requestPermission} className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${notifPermission === 'granted' ? 'bg-white text-[#A0C55F]' : 'bg-[#A0C55F] text-white shadow-lg'}`}>
-              {notifPermission === 'granted' ? 'Connected Successfully' : 'Enable Cloud Nudges'}
-            </button>
+            <p className="text-gray-500 font-medium">Link Bito to the Firebase cloud to receive your daily health nudges even when the app is closed.</p>
+            
+            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+              <button 
+                onClick={requestPermission} 
+                disabled={loading || notifPermission === 'granted'}
+                className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 ${notifPermission === 'granted' ? 'bg-white text-[#A0C55F] cursor-default border border-[#A0C55F]/20' : 'bg-[#A0C55F] text-white shadow-xl hover:scale-105 active:scale-95'}`}
+              >
+                {loading ? <Loader2 className="animate-spin" size={18} /> : (notifPermission === 'granted' ? <Check size={18} /> : <Zap size={18} />)}
+                {loading ? 'Connecting...' : (notifPermission === 'granted' ? 'Cloud Active' : 'Enable Cloud Nudges')}
+              </button>
+
+              {notifPermission === 'granted' && (
+                <button 
+                  onClick={triggerLocalTest}
+                  className="px-8 py-4 bg-white border border-gray-100 rounded-2xl font-black text-xs uppercase tracking-widest text-gray-500 hover:bg-gray-50 transition-all flex items-center gap-2"
+                >
+                  <PlayCircle size={18} />
+                  Test My Nudge
+                </button>
+              )}
+            </div>
          </div>
       </div>
 
@@ -122,9 +186,9 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
               <Terminal size={18} />
               <h4 className="text-[10px] font-black uppercase tracking-[0.4em]">Developer Test Mode</h4>
            </div>
-           <p className="text-gray-400 text-sm font-medium">Copy this <b>Device Address</b> and paste it into the "Test on Device" section of the Firebase Messaging Campaign tool.</p>
+           <p className="text-gray-400 text-sm font-medium">Use this <b>Device Address</b> in the Firebase Console "Test on Device" tool to verify your cloud connection works!</p>
            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-black/30 p-4 rounded-2xl text-white font-mono text-[10px] overflow-hidden truncate opacity-60">
+              <div className="flex-1 bg-black/30 p-4 rounded-2xl text-white font-mono text-[10px] overflow-hidden truncate opacity-60 select-all">
                  {fcmToken}
               </div>
               <button 
@@ -145,7 +209,7 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
               <div className="p-3 bg-white text-orange-400 rounded-2xl shadow-sm"><Clock size={20} /></div>
               <div>
                 <p className="font-bold text-[#2F3E2E]">Daily Catch-up</p>
-                <p className="text-xs text-gray-400">Bito will nudge you if you've been quiet.</p>
+                <p className="text-xs text-gray-400">Bito will nudge you at this time.</p>
               </div>
             </div>
             <input 
@@ -158,7 +222,7 @@ export const SettingsDetails: React.FC<SettingsDetailsProps> = ({ type, onBack, 
           
           {[
             { id: 'mealReminders', icon: Flame, title: 'Habit Reminders', desc: 'Alerts when you forget to log fuel.', color: 'text-orange-400' },
-            { id: 'streakUpdates', icon: Zap, title: 'Streak Power-ups', desc: 'Celebrations for hitting 3, 7, 30 days.', color: 'text-yellow-600' },
+            { id: 'streakUpdates', icon: Zap, title: 'Streak Power-ups', desc: 'Celebrations for hitting records.', color: 'text-yellow-600' },
           ].map((item) => (
             <div key={item.id} className="flex justify-between items-center p-6 bg-gray-50/50 rounded-[32px] border border-gray-100/50">
               <div className="flex items-center gap-4">
