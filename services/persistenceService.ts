@@ -14,19 +14,18 @@ import {
   serverTimestamp,
   Timestamp,
   orderBy,
-  limit
+  limit,
+  arrayUnion
 } from 'firebase/firestore';
 
 const convertTimestamps = (data: any): any => {
   if (!data || typeof data !== 'object') return data;
   
-  // Clone to avoid mutating original source if needed
   const newData = Array.isArray(data) ? [...data] : { ...data };
   
   for (const key in newData) {
     const val = newData[key];
     
-    // Specifically handle Firestore Timestamp objects
     if (val && typeof val === 'object' && typeof val.toDate === 'function') {
       newData[key] = val.toDate();
     } else if (val && typeof val === 'object') {
@@ -57,10 +56,29 @@ export const persistenceService = {
       try {
         await setDoc(doc(db, 'users', currentUser.uid), { 
           ...userData, 
-          userId: currentUser.uid 
+          userId: currentUser.uid,
+          lastActive: serverTimestamp()
         }, { merge: true });
       } catch (err) {
         console.error("Persistence: Failed to save user", err);
+      }
+    }
+  },
+
+  // Optimized FCM Token Syncing for Cloud Messaging
+  saveMessagingToken: async (token: string) => {
+    const currentUser = auth.currentUser;
+    if (currentUser && token) {
+      try {
+        // We use setDoc with merge to ensure we don't overwrite existing user data
+        await setDoc(doc(db, 'users', currentUser.uid), { 
+          fcmTokens: arrayUnion(token),
+          lastTokenSync: serverTimestamp(),
+          pushEnabled: true
+        }, { merge: true });
+        console.log("Bito linked to Cloud Messaging successfully! 🥑");
+      } catch (err) {
+        console.error("Persistence: Failed to save messaging token", err);
       }
     }
   },

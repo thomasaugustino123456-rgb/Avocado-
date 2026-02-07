@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { persistenceService } from './services/persistenceService';
-import { auth } from './services/firebase';
+import { auth, messaging } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { onMessage, getToken } from 'firebase/messaging';
 import { Auth } from './screens/Auth';
 import { Onboarding } from './screens/Onboarding';
 import { Home } from './screens/Home';
@@ -15,7 +16,8 @@ import { ChatScreen } from './screens/Chat';
 import { Library } from './screens/Library';
 import { Landing } from './screens/Landing';
 import { Screen, User, DailyLog, Meal, LibraryItem, FoodAnalysis } from './types';
-import { Home as HomeIcon, PieChart, Plus, User as UserIcon, Calendar, Camera, MessageCircle, Library as LibraryIcon, Loader2, Cloud, CloudOff, Settings, Video } from 'lucide-react';
+import { Home as HomeIcon, PieChart, Plus, User as UserIcon, Calendar, Camera, MessageCircle, Library as LibraryIcon, Loader2, Cloud, CloudOff, Settings, Video, BellRing, X } from 'lucide-react';
+import { audioService } from './services/audioService';
 
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -34,10 +36,76 @@ const App: React.FC = () => {
     waterGlasses: 0,
     meals: [],
   });
+  
+  const [activeNotification, setActiveNotification] = useState<{title: string, body: string} | null>(null);
+
+  // Register Service Worker & Handle Foreground Messages
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./firebase-messaging-sw.js')
+        .then((reg) => console.log('Bito Messaging SW active'))
+        .catch((err) => console.warn('SW failed', err));
+    }
+
+    if (messaging) {
+      const unsubscribe = onMessage(messaging, (payload) => {
+        if (payload.notification) {
+          setActiveNotification({
+            title: payload.notification.title || 'Bito Nudge!',
+            body: payload.notification.body || 'Time for a health check!'
+          });
+          audioService.playIce();
+          setTimeout(() => setActiveNotification(null), 8000);
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, []);
+
+  // Sync Messaging Token whenever profile is active with the REAL VAPID KEY
+  useEffect(() => {
+    const syncToken = async () => {
+      if (messaging && userProfile && !isGuest) {
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            // Updated with User's Real VAPID Key
+            const VAPID_KEY = 'BO0Rz9AB9uKWj7qtWWqcJUG3B0X8QRVe5WR40zS6NFVlNkVm5xu8G95ktzkVU9bkAiZ58K_2M7zS_LOjrDYCkEg';
+            const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+            if (token) await persistenceService.saveMessagingToken(token);
+          }
+        } catch (err) {
+          console.warn("Token sync skipped:", err);
+        }
+      }
+    };
+    syncToken();
+  }, [userProfile, isGuest]);
+
+  // Smart Nudge Engine (Duolingo style local reminders)
+  useEffect(() => {
+    const nudgeInterval = setInterval(() => {
+      if (!userProfile?.settings?.notifications?.mealReminders) return;
+      
+      const now = new Date();
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      const targetTime = userProfile.settings.notifications.reminderTime || '08:00';
+
+      // Trigger if time matches and user hasn't logged anything today
+      if (currentTime === targetTime && dailyLog.meals.length === 0) {
+        setActiveNotification({
+          title: "Bito misses you! 🥑",
+          body: "Your streak is at risk! Log your breakfast now to keep it alive. ✨"
+        });
+        audioService.playIce();
+      }
+    }, 60000);
+
+    return () => clearInterval(nudgeInterval);
+  }, [userProfile, dailyLog]);
 
   const refreshData = useCallback(async () => {
     if (!userProfile) return;
-    
     try {
       const today = new Date().toISOString().split('T')[0];
       const [log, lib] = await Promise.all([
@@ -62,9 +130,8 @@ const App: React.FC = () => {
         });
       }
       setHistoryData(last7Days);
-
     } catch (err: any) {
-      console.warn("Bito couldn't fetch latest data:", err.message);
+      console.warn("Refresh failed:", err.message);
     }
   }, [userProfile]);
 
@@ -75,7 +142,6 @@ const App: React.FC = () => {
         setIsGuest(false);
         setShowLanding(false);
         setIsLoading(true);
-        
         try {
           let profile = await persistenceService.getUser();
           if (!profile) {
@@ -91,7 +157,11 @@ const App: React.FC = () => {
               dailyStepGoal: 8000,
               dailyWaterGoal: 8,
               userId: firebaseUser.uid,
-              photoFileName: ""
+              photoFileName: "",
+              settings: {
+                notifications: { mealReminders: true, streakUpdates: true, tipsEncouragement: true, reminderTime: '08:00' },
+                privacy: { libraryPublic: false }
+              }
             };
             await persistenceService.saveUser(newProfile);
             profile = newProfile;
@@ -106,14 +176,11 @@ const App: React.FC = () => {
         if (!isGuest) setIsLoading(false);
       }
     });
-
     return () => unsubscribe();
   }, [isGuest]);
 
   useEffect(() => {
-    if (userProfile) {
-      refreshData();
-    }
+    if (userProfile) refreshData();
   }, [userProfile, refreshData]);
 
   useEffect(() => {
@@ -132,6 +199,10 @@ const App: React.FC = () => {
                 dailyCalorieGoal: 2000,
                 dailyStepGoal: 8000,
                 dailyWaterGoal: 8,
+                settings: {
+                    notifications: { mealReminders: true, streakUpdates: true, tipsEncouragement: true, reminderTime: '08:00' },
+                    privacy: { libraryPublic: false }
+                }
               });
             } finally {
               setIsLoading(false);
@@ -149,11 +220,6 @@ const App: React.FC = () => {
     setIsLoading(false);
   };
 
-  const handleGuestLogin = () => {
-    setIsGuest(true);
-    setShowLanding(false);
-  };
-
   const handleUpdateWater = async (amount: number) => {
     const newVal = Math.max(0, dailyLog.waterGlasses + amount);
     const updatedLog = { ...dailyLog, waterGlasses: newVal };
@@ -169,10 +235,7 @@ const App: React.FC = () => {
   };
 
   const handleAddMeal = async (meal: Meal) => {
-    const updatedLog = { 
-      ...dailyLog, 
-      meals: [...dailyLog.meals, meal]
-    };
+    const updatedLog = { ...dailyLog, meals: [...dailyLog.meals, meal] };
     setDailyLog(updatedLog);
     await persistenceService.saveMeal(meal);
     await persistenceService.saveDailyLog(updatedLog);
@@ -181,10 +244,7 @@ const App: React.FC = () => {
 
   const handleSaveToLibrary = async (type: 'food' | 'chart', data: any) => {
     try {
-      await persistenceService.saveToLibrary({ 
-        item_type: type, 
-        item_data: data 
-      });
+      await persistenceService.saveToLibrary({ item_type: type, item_data: data });
       await refreshData();
     } catch (err: any) {
       console.error("Library save error:", err);
@@ -199,24 +259,15 @@ const App: React.FC = () => {
     );
 
     switch (currentScreen) {
-      case 'home':
-        return <Home user={userProfile} dailyLog={dailyLog} streak={streak} onUpdateWater={handleUpdateWater} onUpdateSteps={handleUpdateSteps} onAddMealClick={() => setCurrentScreen('add_meal')} isCreatorMode={isCreatorMode} setIsCreatorMode={setIsCreatorMode} />;
-      case 'stats':
-        return <Stats history={historyData} onSaveChart={(data) => handleSaveToLibrary('chart', { title: 'Weekly Snapshot', ...data })} />;
-      case 'calendar':
-        return <CalendarView />;
-      case 'add_meal':
-        return <MealEntry onAdd={handleAddMeal} onCancel={() => setCurrentScreen('home')} />;
-      case 'library':
-        return <Library items={libraryItems} onDelete={async (id) => { await persistenceService.deleteFromLibrary(id); refreshData(); }} onAddToDaily={handleAddMeal} />;
-      case 'profile':
-        return <Profile user={userProfile} isGuest={isGuest} setUser={async (u) => { await persistenceService.saveUser(u); setUserProfile(u); }} onNavigate={(s) => setCurrentScreen(s)} onExitGuest={() => { setIsGuest(false); setUserProfile(null); setUser(null); }} />;
-      case 'chat':
-        return <ChatScreen onBack={() => setCurrentScreen('home')} onSaveInsight={(data) => handleSaveToLibrary('chart', data)} />;
-      case 'scan_food':
-        return <FoodScanner onCancel={() => setCurrentScreen('home')} onAddMeal={handleAddMeal} onSaveToLibrary={(data) => handleSaveToLibrary('food', data)} />;
-      default:
-        return <Home user={userProfile} dailyLog={dailyLog} streak={streak} onUpdateWater={handleUpdateWater} onUpdateSteps={handleUpdateSteps} onAddMealClick={() => setCurrentScreen('add_meal')} isCreatorMode={isCreatorMode} setIsCreatorMode={setIsCreatorMode} />;
+      case 'home': return <Home user={userProfile} dailyLog={dailyLog} streak={streak} onUpdateWater={handleUpdateWater} onUpdateSteps={handleUpdateSteps} onAddMealClick={() => setCurrentScreen('add_meal')} isCreatorMode={isCreatorMode} setIsCreatorMode={setIsCreatorMode} />;
+      case 'stats': return <Stats history={historyData} onSaveChart={(data) => handleSaveToLibrary('chart', { title: 'Weekly Snapshot', ...data })} />;
+      case 'calendar': return <CalendarView />;
+      case 'add_meal': return <MealEntry onAdd={handleAddMeal} onCancel={() => setCurrentScreen('home')} />;
+      case 'library': return <Library items={libraryItems} onDelete={async (id) => { await persistenceService.deleteFromLibrary(id); refreshData(); }} onAddToDaily={handleAddMeal} />;
+      case 'profile': return <Profile user={userProfile} isGuest={isGuest} setUser={async (u) => { await persistenceService.saveUser(u); setUserProfile(u); }} onNavigate={(s) => setCurrentScreen(s)} onExitGuest={() => { setIsGuest(false); setUserProfile(null); setUser(null); }} />;
+      case 'chat': return <ChatScreen onBack={() => setCurrentScreen('home')} onSaveInsight={(data) => handleSaveToLibrary('chart', data)} />;
+      case 'scan_food': return <FoodScanner onCancel={() => setCurrentScreen('home')} onAddMeal={handleAddMeal} onSaveToLibrary={(data) => handleSaveToLibrary('food', data)} />;
+      default: return <Home user={userProfile} dailyLog={dailyLog} streak={streak} onUpdateWater={handleUpdateWater} onUpdateSteps={handleUpdateSteps} onAddMealClick={() => setCurrentScreen('add_meal')} isCreatorMode={isCreatorMode} setIsCreatorMode={setIsCreatorMode} />;
     }
   };
 
@@ -229,23 +280,29 @@ const App: React.FC = () => {
     );
   }
 
-  if (showLanding && !user && !isGuest) {
-    return <Landing onGetStarted={() => setShowLanding(false)} />;
-  }
-  
-  if (!user && !isGuest) {
-    return <Auth onGuestLogin={handleGuestLogin} onBack={() => setShowLanding(true)} />;
-  }
-
-  if (!userProfile || !userProfile.name) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
-  }
+  if (showLanding && !user && !isGuest) return <Landing onGetStarted={() => setShowLanding(false)} />;
+  if (!user && !isGuest) return <Auth onGuestLogin={() => setIsGuest(true)} onBack={() => setShowLanding(true)} />;
+  if (!userProfile || !userProfile.name) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   const isStandaloneScreen = ['add_meal', 'scan_food', 'chat'].includes(currentScreen);
-  const isChat = currentScreen === 'chat';
 
   return (
     <div className="h-[100dvh] bg-[#F8FAF5] flex flex-col lg:flex-row overflow-hidden relative">
+      {activeNotification && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[300] w-[90%] max-w-md bg-[#2F3E2E] text-white p-6 rounded-[32px] shadow-2xl animate-in slide-in-from-top-10 duration-500 flex items-center gap-5 border border-white/10">
+          <div className="bg-[#A0C55F] p-3 rounded-2xl shadow-lg shrink-0">
+             <BellRing size={24} className="text-white animate-bounce" />
+          </div>
+          <div className="flex-1 space-y-1">
+             <h4 className="font-brand font-bold text-lg leading-none">{activeNotification.title}</h4>
+             <p className="text-sm text-gray-400 font-medium">{activeNotification.body}</p>
+          </div>
+          <button onClick={() => setActiveNotification(null)} className="p-2 hover:bg-white/10 rounded-xl transition-all">
+             <X size={20} className="text-gray-500" />
+          </button>
+        </div>
+      )}
+
       {!isStandaloneScreen && (
         <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-gray-100 p-8 z-50 shadow-sm animate-in slide-in-from-left duration-700">
           <div className="flex items-center gap-4 mb-12 px-2 cursor-pointer" onClick={() => setCurrentScreen('home')}>
@@ -262,55 +319,28 @@ const App: React.FC = () => {
               { s: 'library', i: LibraryIcon, l: 'Library' },
               { s: 'profile', i: UserIcon, l: 'Profile' },
             ].map(({ s, i: Icon, l }) => (
-              <button 
-                key={s}
-                onClick={() => setCurrentScreen(s as Screen)}
-                className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all w-full group active:scale-95 ${
-                  currentScreen === s 
-                  ? 'bg-[#A0C55F] text-white shadow-lg shadow-[#A0C55F]/20 translate-x-1' 
-                  : 'text-gray-400 hover:bg-[#F8FAF5] hover:text-[#2F3E2E]'
-                }`}
-              >
-                <Icon size={24} className={currentScreen === s ? 'animate-pulse' : 'group-hover:scale-110 transition-transform'} />
+              <button key={s} onClick={() => setCurrentScreen(s as Screen)} className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all w-full group active:scale-95 ${currentScreen === s ? 'bg-[#A0C55F] text-white shadow-lg shadow-[#A0C55F]/20' : 'text-gray-400 hover:bg-[#F8FAF5] hover:text-[#2F3E2E]'}`}>
+                <Icon size={24} />
                 <span className="font-bold text-lg">{l}</span>
               </button>
             ))}
           </nav>
           <div className={`mt-auto p-4 rounded-2xl flex items-center gap-3 border ${isGuest ? 'bg-orange-50 border-orange-100 text-orange-400' : 'bg-blue-50 border-blue-100 text-blue-400'}`}>
              {isGuest ? <CloudOff size={18} /> : <Cloud size={18} />}
-             <span className="text-[10px] font-bold uppercase tracking-widest">{isGuest ? 'Guest Mode' : 'Cloud Sync On'}</span>
+             <span className="text-[10px] font-bold uppercase tracking-widest">{isGuest ? 'Guest Mode' : 'Connected'}</span>
           </div>
         </aside>
       )}
 
-      {!isStandaloneScreen && (
-        <header className="lg:hidden fixed top-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-xl z-[100] flex items-center justify-between px-6 border-b border-gray-100/50">
-           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentScreen('home')}>
-             <div className="w-10 h-10 bg-[#A0C55F] rounded-xl flex items-center justify-center font-brand font-black text-white text-xl shadow-md">B</div>
-             <span className="font-brand font-black text-xl text-[#2F3E2E]">Bito</span>
-           </div>
-           <div className="flex items-center gap-2">
-             <button onClick={() => setIsCreatorMode(!isCreatorMode)} className={`p-3 rounded-2xl transition-all border flex items-center gap-2 ${isCreatorMode ? 'bg-[#2F3E2E] text-white' : 'bg-white text-gray-400'}`}>
-               <Video size={18} className={isCreatorMode ? 'text-red-500' : 'text-gray-300'} />
-               <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Studio</span>
-             </button>
-             <button onClick={() => setCurrentScreen('library')} className={`p-3 rounded-2xl transition-all ${currentScreen === 'library' ? 'bg-[#A0C55F] text-white shadow-lg' : 'bg-gray-50 text-gray-400'}`}><LibraryIcon size={20} /></button>
-             <button onClick={() => setCurrentScreen('profile')} className={`p-3 rounded-2xl transition-all ${currentScreen === 'profile' ? 'bg-[#A0C55F] text-white shadow-lg' : 'bg-gray-50 text-gray-400'}`}><UserIcon size={20} /></button>
-           </div>
-        </header>
-      )}
-
       <main className={`flex-1 flex flex-col relative overflow-hidden ${!isStandaloneScreen ? 'pt-20 lg:pt-0' : ''}`}>
-        <div className={`flex-1 w-full max-w-6xl mx-auto flex flex-col relative overflow-hidden`}>
-           <div key={currentScreen} className={`flex-1 flex flex-col relative overflow-y-auto animate-in fade-in slide-in-from-bottom-6 duration-700 ${(!isStandaloneScreen && !isChat) ? 'pb-32 lg:pb-8' : ''}`}>
-             {renderScreen()}
-           </div>
+        <div key={currentScreen} className="flex-1 w-full max-w-6xl mx-auto overflow-y-auto pb-32 lg:pb-8">
+           {renderScreen()}
         </div>
       </main>
 
       {!isStandaloneScreen && (
         <nav className="lg:hidden fixed bottom-6 left-4 right-4 bg-white/90 backdrop-blur-2xl px-2 py-3 rounded-[36px] shadow-2xl z-[100] border border-white/50 animate-in slide-in-from-bottom duration-700">
-          <div className="flex justify-around items-center gap-1">
+          <div className="flex justify-around items-center">
             {[
               { s: 'home', i: HomeIcon, l: 'Home' },
               { s: 'stats', i: PieChart, l: 'Stats' },
@@ -318,9 +348,9 @@ const App: React.FC = () => {
               { s: 'scan_food', i: Camera, l: 'Scan' },
               { s: 'chat', i: MessageCircle, l: 'Chat' },
             ].map(({ s, i: Icon, l }) => (
-              <button key={s} onClick={() => setCurrentScreen(s as Screen)} className={`flex flex-col items-center justify-center gap-1 min-w-[60px] transition-all ${currentScreen === s ? 'text-[#A0C55F]' : 'text-gray-400'}`}>
-                <div className={`p-3 rounded-2xl transition-all ${currentScreen === s ? 'bg-[#A0C55F] text-white shadow-lg shadow-[#A0C55F]/20' : 'bg-transparent'}`}><Icon size={22} /></div>
-                <span className={`text-[9px] font-black uppercase tracking-tight ${currentScreen === s ? 'text-[#2F3E2E]' : 'opacity-60'}`}>{l}</span>
+              <button key={s} onClick={() => setCurrentScreen(s as Screen)} className={`flex flex-col items-center justify-center gap-1 transition-all ${currentScreen === s ? 'text-[#A0C55F]' : 'text-gray-400'}`}>
+                <div className={`p-3 rounded-2xl ${currentScreen === s ? 'bg-[#A0C55F] text-white shadow-lg' : ''}`}><Icon size={22} /></div>
+                <span className="text-[9px] font-black uppercase tracking-tight">{l}</span>
               </button>
             ))}
           </div>

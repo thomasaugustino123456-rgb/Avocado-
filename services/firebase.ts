@@ -1,3 +1,4 @@
+
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { 
@@ -6,6 +7,7 @@ import {
   persistentMultipleTabManager 
 } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
+import { getMessaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBBX0byeEjiQ7HkhmPC2NETOA9Myr0HAKk",
@@ -28,6 +30,9 @@ export const db = initializeFirestore(app, {
     tabManager: persistentMultipleTabManager()
   })
 });
+
+// Initialize Messaging
+export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 
 // Basic Analytics check for browser environments
 if (typeof window !== 'undefined') {
