@@ -39,17 +39,14 @@ const App: React.FC = () => {
   
   const [activeNotification, setActiveNotification] = useState<{title: string, body: string} | null>(null);
 
-  // Register Service Worker & Handle Foreground Messages
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./firebase-messaging-sw.js')
+    if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' })
         .then((reg) => {
           if (reg.active) console.log('Bito Messaging SW active');
         })
         .catch((err) => {
-          if (!err.message.includes('origin')) {
-            console.warn('SW failed', err);
-          }
+          console.debug('SW registration skipped or failed', err.message);
         });
     }
 
@@ -68,7 +65,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Sync Messaging Token whenever profile is active
   useEffect(() => {
     const syncToken = async () => {
       if (messaging && userProfile && !isGuest && !window.location.hostname.includes('usercontent.goog')) {
@@ -80,6 +76,7 @@ const App: React.FC = () => {
             if (token) await persistenceService.saveMessagingToken(token);
           }
         } catch (err) {
+          console.debug("Messaging token sync skipped");
         }
       }
     };

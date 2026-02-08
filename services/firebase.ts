@@ -6,7 +6,7 @@ import {
   persistentLocalCache, 
   persistentMultipleTabManager 
 } from 'firebase/firestore';
-import { getAnalytics } from 'firebase/analytics';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 import { getMessaging } from 'firebase/messaging';
 
 const firebaseConfig = {
@@ -19,27 +19,30 @@ const firebaseConfig = {
   measurementId: "G-77N9J56DHE"
 };
 
+// Initialize Firebase App
 const app = initializeApp(firebaseConfig);
+
+// Initialize Services
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-/**
- * Initialize Firestore with robust offline capabilities.
- */
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
   })
 });
 
-// Initialize Messaging
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 
-// Basic Analytics check for browser environments
+// Initialize Analytics safely
 if (typeof window !== 'undefined') {
-  try {
-    getAnalytics(app);
-  } catch (e) {
-    console.warn("Analytics blocked or failed to initialize");
-  }
+  isSupported().then(supported => {
+    if (supported) {
+      try {
+        getAnalytics(app);
+      } catch (e) {
+        console.debug("Analytics initialization skipped or blocked.");
+      }
+    }
+  });
 }
