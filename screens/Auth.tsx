@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { auth, googleProvider } from '../services/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
@@ -160,7 +159,7 @@ export const Auth: React.FC<AuthProps> = ({ onBack, onGuestLogin }) => {
                             <span className="w-4 h-4 rounded-full bg-orange-200 flex items-center justify-center text-[8px]">1</span>
                             Check Console
                          </div>
-                         <p className="text-[11px] opacity-70">Go to Firebase Console > Auth > Settings > Authorized Domains.</p>
+                         <p className="text-[11px] opacity-70">Go to Firebase Console &gt; Auth &gt; Settings &gt; Authorized Domains.</p>
                       </div>
 
                       <div className="space-y-2">
