@@ -42,9 +42,17 @@ const App: React.FC = () => {
   // Register Service Worker & Handle Foreground Messages
   useEffect(() => {
     if ('serviceWorker' in navigator) {
+      // Wrapped in a try-catch and origin check to avoid sandbox errors
       navigator.serviceWorker.register('./firebase-messaging-sw.js')
-        .then((reg) => console.log('Bito Messaging SW active'))
-        .catch((err) => console.warn('SW failed', err));
+        .then((reg) => {
+          if (reg.active) console.log('Bito Messaging SW active');
+        })
+        .catch((err) => {
+          // Silently ignore origin mismatch in dev sandbox
+          if (!err.message.includes('origin')) {
+            console.warn('SW failed', err);
+          }
+        });
     }
 
     if (messaging) {
@@ -65,7 +73,8 @@ const App: React.FC = () => {
   // Sync Messaging Token whenever profile is active
   useEffect(() => {
     const syncToken = async () => {
-      if (messaging && userProfile && !isGuest) {
+      // Only sync if messaging is available AND we are not in a restricted origin
+      if (messaging && userProfile && !isGuest && !window.location.hostname.includes('usercontent.goog')) {
         try {
           const permission = await Notification.requestPermission();
           if (permission === 'granted') {
@@ -74,7 +83,7 @@ const App: React.FC = () => {
             if (token) await persistenceService.saveMessagingToken(token);
           }
         } catch (err) {
-          console.warn("Token sync skipped:", err);
+          // Token sync failed, usually due to sandbox restrictions
         }
       }
     };
@@ -82,7 +91,9 @@ const App: React.FC = () => {
   }, [userProfile, isGuest]);
 
   const refreshData = useCallback(async () => {
-    if (!userProfile) return;
+    // CRITICAL: Stop permission errors by ensuring we have a user before fetching
+    if (!userProfile || (!auth.currentUser && !isGuest)) return;
+    
     try {
       const today = new Date().toISOString().split('T')[0];
       const [log, lib] = await Promise.all([
@@ -103,14 +114,15 @@ const App: React.FC = () => {
           steps: dayLog.steps || 0,
           water: dayLog.waterGlasses || 0,
           calories: dayLog.meals.reduce((sum, m) => sum + m.calories, 0),
-          weight: userProfile?.weight || 70
+          weight: userProfile?.weight || 70,
+          hasActivity: (dayLog.steps || 0) > 0 || (dayLog.waterGlasses || 0) > 0 || (dayLog.meals?.length || 0) > 0
         });
       }
       setHistoryData(last7Days);
     } catch (err: any) {
-      console.warn("Refresh failed:", err.message);
+      console.warn("Refresh deferred: awaiting stable connection", err.message);
     }
-  }, [userProfile]);
+  }, [userProfile, isGuest]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -150,7 +162,10 @@ const App: React.FC = () => {
           setIsLoading(false);
         }
       } else {
-        if (!isGuest) setIsLoading(false);
+        if (!isGuest) {
+          setIsLoading(false);
+          setUserProfile(null);
+        }
       }
     });
     return () => unsubscribe();
@@ -165,8 +180,8 @@ const App: React.FC = () => {
         const loadGuest = async () => {
             setIsLoading(true);
             try {
-              const profile = await persistenceService.getUser();
-              setUserProfile(profile || {
+              // For guest mode, we don't fetch from Firestore to avoid permission errors
+              setUserProfile({
                 name: 'Guest',
                 age: 25,
                 weight: 70,
@@ -201,25 +216,28 @@ const App: React.FC = () => {
     const newVal = Math.max(0, dailyLog.waterGlasses + amount);
     const updatedLog = { ...dailyLog, waterGlasses: newVal };
     setDailyLog(updatedLog);
-    await persistenceService.saveDailyLog(updatedLog);
+    if (!isGuest) await persistenceService.saveDailyLog(updatedLog);
   };
 
   const handleUpdateSteps = async (amount: number) => {
     const newVal = Math.max(0, dailyLog.steps + amount);
     const updatedLog = { ...dailyLog, steps: newVal };
     setDailyLog(updatedLog);
-    await persistenceService.saveDailyLog(updatedLog);
+    if (!isGuest) await persistenceService.saveDailyLog(updatedLog);
   };
 
   const handleAddMeal = async (meal: Meal) => {
     const updatedLog = { ...dailyLog, meals: [...dailyLog.meals, meal] };
     setDailyLog(updatedLog);
-    await persistenceService.saveMeal(meal);
-    await persistenceService.saveDailyLog(updatedLog);
+    if (!isGuest) {
+      await persistenceService.saveMeal(meal);
+      await persistenceService.saveDailyLog(updatedLog);
+    }
     setCurrentScreen('home');
   };
 
   const handleSaveToLibrary = async (type: 'food' | 'chart', data: any) => {
+    if (isGuest) return;
     try {
       await persistenceService.saveToLibrary({ item_type: type, item_data: data });
       await refreshData();
@@ -238,10 +256,10 @@ const App: React.FC = () => {
     switch (currentScreen) {
       case 'home': return <Home user={userProfile} dailyLog={dailyLog} streak={streak} onUpdateWater={handleUpdateWater} onUpdateSteps={handleUpdateSteps} onAddMealClick={() => setCurrentScreen('add_meal')} isCreatorMode={isCreatorMode} setIsCreatorMode={setIsCreatorMode} />;
       case 'stats': return <Stats history={historyData} onSaveChart={(data) => handleSaveToLibrary('chart', { title: 'Weekly Snapshot', ...data })} />;
-      case 'calendar': return <CalendarView />;
+      case 'calendar': return <CalendarView history={historyData} />;
       case 'add_meal': return <MealEntry onAdd={handleAddMeal} onCancel={() => setCurrentScreen('home')} />;
-      case 'library': return <Library items={libraryItems} onDelete={async (id) => { await persistenceService.deleteFromLibrary(id); refreshData(); }} onAddToDaily={handleAddMeal} />;
-      case 'profile': return <Profile user={userProfile} isGuest={isGuest} setUser={async (u) => { await persistenceService.saveUser(u); setUserProfile(u); }} onNavigate={(s) => setCurrentScreen(s)} onExitGuest={() => { setIsGuest(false); setUserProfile(null); setUser(null); }} />;
+      case 'library': return <Library items={libraryItems} onDelete={async (id) => { if(!isGuest) { await persistenceService.deleteFromLibrary(id); refreshData(); } }} onAddToDaily={handleAddMeal} />;
+      case 'profile': return <Profile user={userProfile} isGuest={isGuest} setUser={async (u) => { if(!isGuest) await persistenceService.saveUser(u); setUserProfile(u); }} onNavigate={(s) => setCurrentScreen(s)} onExitGuest={() => { setIsGuest(false); setUserProfile(null); setUser(null); }} />;
       case 'chat': return <ChatScreen onBack={() => setCurrentScreen('home')} onSaveInsight={(data) => handleSaveToLibrary('chart', data)} />;
       case 'scan_food': return <FoodScanner onCancel={() => setCurrentScreen('home')} onAddMeal={handleAddMeal} onSaveToLibrary={(data) => handleSaveToLibrary('food', data)} />;
       default: return <Home user={userProfile} dailyLog={dailyLog} streak={streak} onUpdateWater={handleUpdateWater} onUpdateSteps={handleUpdateSteps} onAddMealClick={() => setCurrentScreen('add_meal')} isCreatorMode={isCreatorMode} setIsCreatorMode={setIsCreatorMode} />;
@@ -353,7 +371,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* GLOBAL BOTTOM NAV - BEAUTIFIED & MATCHED TO APP (RED MARKED AREA) */}
+      {/* GLOBAL BOTTOM NAV */}
       {!isStandaloneScreen && (
         <nav className="lg:hidden fixed bottom-8 left-6 right-6 bg-white/80 backdrop-blur-2xl px-2 py-4 rounded-[40px] shadow-xl shadow-[#A0C55F]/10 z-[100] border border-white/50 animate-in slide-in-from-bottom duration-700">
           <div className="flex justify-around items-center">

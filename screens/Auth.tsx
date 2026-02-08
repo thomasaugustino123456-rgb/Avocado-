@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { auth } from '../services/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -39,12 +40,24 @@ export const Auth: React.FC<AuthProps> = ({ onBack, onGuestLogin }) => {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err: any) {
-      console.error(err);
+      console.error("Auth Error details:", err);
       let friendlyError = "Bito is crying... check your details!";
-      if (err.code === 'auth/invalid-credential') friendlyError = "Wrong email or password.";
-      if (err.code === 'auth/email-already-in-use') friendlyError = "You already have an account!";
-      if (err.code === 'auth/weak-password') friendlyError = "Password should be at least 6 characters.";
-      if (err.code === 'auth/invalid-email') friendlyError = "That email looks a bit odd.";
+      
+      // Handle Firebase specific error codes with friendlier messages
+      if (err.code === 'auth/invalid-credential') {
+        friendlyError = "Check your email and password, or create a new account if you're new! 🥑";
+      } else if (err.code === 'auth/email-already-in-use') {
+        friendlyError = "You already have an account! Try signing in instead.";
+      } else if (err.code === 'auth/weak-password') {
+        friendlyError = "That password is a bit too soft. Use at least 6 characters!";
+      } else if (err.code === 'auth/invalid-email') {
+        friendlyError = "That email looks a bit odd. Is there a typo? 🧐";
+      } else if (err.code === 'auth/operation-not-allowed') {
+        friendlyError = "Email/Password sign-in isn't enabled on Bito's server yet.";
+      } else {
+        friendlyError = err.message || "Something went wrong. Try again in a bit!";
+      }
+      
       setError(friendlyError);
       setMood('error');
     } finally {
@@ -103,7 +116,9 @@ export const Auth: React.FC<AuthProps> = ({ onBack, onGuestLogin }) => {
               />
             </div>
             <div className="relative group">
-              <Lock className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#A0C55F] transition-colors" size={20} />
+              <div className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#A0C55F] transition-colors z-20">
+                <Lock size={20} />
+              </div>
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Secret Password"
@@ -117,7 +132,7 @@ export const Auth: React.FC<AuthProps> = ({ onBack, onGuestLogin }) => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-7 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#A0C55F] transition-colors"
+                className="absolute right-7 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#A0C55F] transition-colors z-20"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>

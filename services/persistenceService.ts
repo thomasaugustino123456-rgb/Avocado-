@@ -38,39 +38,36 @@ const convertTimestamps = (data: any): any => {
 export const persistenceService = {
   getUser: async (): Promise<User | null> => {
     const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        return userDoc.exists() ? (convertTimestamps(userDoc.data()) as User) : null;
-      } catch (err) {
-        console.warn("Persistence: Using cached/offline user data", err);
-        return null; 
-      }
+    if (!currentUser) return null;
+    
+    try {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      return userDoc.exists() ? (convertTimestamps(userDoc.data()) as User) : null;
+    } catch (err) {
+      console.warn("Persistence: Using cached/offline user data", err);
+      return null; 
     }
-    return null;
   },
 
   saveUser: async (userData: User) => {
     const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        await setDoc(doc(db, 'users', currentUser.uid), { 
-          ...userData, 
-          userId: currentUser.uid,
-          lastActive: serverTimestamp()
-        }, { merge: true });
-      } catch (err) {
-        console.error("Persistence: Failed to save user", err);
-      }
+    if (!currentUser) return;
+    
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid), { 
+        ...userData, 
+        userId: currentUser.uid,
+        lastActive: serverTimestamp()
+      }, { merge: true });
+    } catch (err) {
+      console.error("Persistence: Failed to save user", err);
     }
   },
 
-  // Optimized FCM Token Syncing for Cloud Messaging
   saveMessagingToken: async (token: string) => {
     const currentUser = auth.currentUser;
     if (currentUser && token) {
       try {
-        // We use setDoc with merge to ensure we don't overwrite existing user data
         await setDoc(doc(db, 'users', currentUser.uid), { 
           fcmTokens: arrayUnion(token),
           lastTokenSync: serverTimestamp(),
@@ -85,47 +82,47 @@ export const persistenceService = {
 
   saveMeal: async (meal: Meal) => {
     const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        const mealToSave = {
-          ...meal,
-          userId: currentUser.uid,
-          created_at: serverTimestamp()
-        };
-        await setDoc(doc(db, 'meal_history', meal.id), mealToSave);
-      } catch (err) {
-        console.error("Persistence: Failed to save meal", err);
-      }
+    if (!currentUser) return;
+    
+    try {
+      const mealToSave = {
+        ...meal,
+        userId: currentUser.uid,
+        created_at: serverTimestamp()
+      };
+      await setDoc(doc(db, 'meal_history', meal.id), mealToSave);
+    } catch (err) {
+      console.error("Persistence: Failed to save meal", err);
     }
   },
 
   saveDailyLog: async (log: DailyLog) => {
     const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        const docId = `${currentUser.uid}_${log.date}`;
-        await setDoc(doc(db, 'daily_logs', docId), { 
-          ...log, 
-          userId: currentUser.uid 
-        }, { merge: true });
-      } catch (err) {
-        console.error("Persistence: Failed to save daily log", err);
-      }
+    if (!currentUser) return;
+    
+    try {
+      const docId = `${currentUser.uid}_${log.date}`;
+      await setDoc(doc(db, 'daily_logs', docId), { 
+        ...log, 
+        userId: currentUser.uid 
+      }, { merge: true });
+    } catch (err) {
+      console.error("Persistence: Failed to save daily log", err);
     }
   },
 
   getDailyLog: async (date: string): Promise<DailyLog> => {
     const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        const docId = `${currentUser.uid}_${date}`;
-        const logDoc = await getDoc(doc(db, 'daily_logs', docId));
-        if (logDoc.exists()) {
-          return convertTimestamps(logDoc.data()) as DailyLog;
-        }
-      } catch (err) {
-        console.warn("Persistence: Falling back to local log state", err);
+    if (!currentUser) return { date, steps: 0, waterGlasses: 0, meals: [] };
+    
+    try {
+      const docId = `${currentUser.uid}_${date}`;
+      const logDoc = await getDoc(doc(db, 'daily_logs', docId));
+      if (logDoc.exists()) {
+        return convertTimestamps(logDoc.data()) as DailyLog;
       }
+    } catch (err) {
+      // Permission errors here are caught silently
     }
     return { date, steps: 0, waterGlasses: 0, meals: [] };
   },
@@ -161,25 +158,23 @@ export const persistenceService = {
 
   getLibrary: async (): Promise<LibraryItem[]> => {
     const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        const q = query(
-          collection(db, 'Library'), 
-          where('userId', '==', currentUser.uid)
-        );
-        const snap = await getDocs(q);
-        const items = snap.docs.map(doc => ({ 
-          id: doc.id, 
-          ...convertTimestamps(doc.data()) 
-        } as LibraryItem));
-        
-        return items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      } catch (err) {
-        console.warn("Persistence: Library load failed", err);
-        return [];
-      }
+    if (!currentUser) return [];
+    
+    try {
+      const q = query(
+        collection(db, 'Library'), 
+        where('userId', '==', currentUser.uid)
+      );
+      const snap = await getDocs(q);
+      const items = snap.docs.map(doc => ({ 
+        id: doc.id, 
+        ...convertTimestamps(doc.data()) 
+      } as LibraryItem));
+      
+      return items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    } catch (err) {
+      return [];
     }
-    return [];
   },
 
   deleteFromLibrary: async (id: string) => {
@@ -289,7 +284,6 @@ export const persistenceService = {
         exportData.dailyLogs = logsSnap.docs.map(d => convertTimestamps(d.data()));
       } catch (e) { 
         console.error("Export: Daily logs fetch failed", e);
-        throw new Error("Daily logs permission error"); 
       }
 
       try {
@@ -298,7 +292,6 @@ export const persistenceService = {
         exportData.library = libSnap.docs.map(d => convertTimestamps(d.data()));
       } catch (e) { 
         console.error("Export: Library fetch failed", e); 
-        throw new Error("Library permission error"); 
       }
 
       try {
@@ -307,7 +300,6 @@ export const persistenceService = {
         exportData.foodScans = scanSnap.docs.map(d => convertTimestamps(d.data()));
       } catch (e) { 
         console.error("Export: Food scans fetch failed", e); 
-        throw new Error("Food scans permission error"); 
       }
       
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -354,18 +346,29 @@ export const persistenceService = {
     try {
       let q;
       if (isAdmin) {
-        q = query(collection(db, 'supportMessages'), orderBy('timestamp', 'desc'), limit(50));
+        q = query(collection(db, 'supportMessages'), limit(100));
+        const snap = await getDocs(q);
+        const msgs = snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) }));
+        return msgs.sort((a, b) => {
+          const tA = a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
+          const tB = b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
+          return tB - tA;
+        });
       } else {
         q = query(
           collection(db, 'supportMessages'), 
-          where('userId', '==', currentUser.uid),
-          orderBy('timestamp', 'desc')
+          where('userId', '==', currentUser.uid)
         );
+        const snap = await getDocs(q);
+        const msgs = snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) }));
+        
+        return msgs.sort((a, b) => {
+          const tA = a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
+          const tB = b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
+          return tB - tA;
+        });
       }
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) }));
     } catch (err) {
-      console.error("Persistence: Failed to fetch support messages", err);
       return [];
     }
   }
