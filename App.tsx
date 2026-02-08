@@ -42,13 +42,11 @@ const App: React.FC = () => {
   // Register Service Worker & Handle Foreground Messages
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      // Wrapped in a try-catch and origin check to avoid sandbox errors
       navigator.serviceWorker.register('./firebase-messaging-sw.js')
         .then((reg) => {
           if (reg.active) console.log('Bito Messaging SW active');
         })
         .catch((err) => {
-          // Silently ignore origin mismatch in dev sandbox
           if (!err.message.includes('origin')) {
             console.warn('SW failed', err);
           }
@@ -73,7 +71,6 @@ const App: React.FC = () => {
   // Sync Messaging Token whenever profile is active
   useEffect(() => {
     const syncToken = async () => {
-      // Only sync if messaging is available AND we are not in a restricted origin
       if (messaging && userProfile && !isGuest && !window.location.hostname.includes('usercontent.goog')) {
         try {
           const permission = await Notification.requestPermission();
@@ -83,7 +80,6 @@ const App: React.FC = () => {
             if (token) await persistenceService.saveMessagingToken(token);
           }
         } catch (err) {
-          // Token sync failed, usually due to sandbox restrictions
         }
       }
     };
@@ -91,7 +87,6 @@ const App: React.FC = () => {
   }, [userProfile, isGuest]);
 
   const refreshData = useCallback(async () => {
-    // CRITICAL: Stop permission errors by ensuring we have a user before fetching
     if (!userProfile || (!auth.currentUser && !isGuest)) return;
     
     try {
@@ -142,6 +137,7 @@ const App: React.FC = () => {
               weightUnit: 'kg',
               height: 170,
               goal: 'Stay healthy 🥑',
+              profilePic: firebaseUser.photoURL || '',
               dailyCalorieGoal: 2000,
               dailyStepGoal: 8000,
               dailyWaterGoal: 8,
@@ -180,7 +176,6 @@ const App: React.FC = () => {
         const loadGuest = async () => {
             setIsLoading(true);
             try {
-              // For guest mode, we don't fetch from Firestore to avoid permission errors
               setUserProfile({
                 name: 'Guest',
                 age: 25,
@@ -298,7 +293,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Desktop Sidebar */}
       {!isStandaloneScreen && (
         <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-gray-100 p-8 z-50 shadow-sm animate-in slide-in-from-left duration-700">
           <div className="flex items-center gap-4 mb-12 px-2 cursor-pointer" onClick={() => setCurrentScreen('home')}>
@@ -328,7 +322,6 @@ const App: React.FC = () => {
         </aside>
       )}
 
-      {/* Global Mobile Header */}
       {!isStandaloneScreen && (
         <header className="lg:hidden fixed top-0 left-0 right-0 h-24 bg-white/70 backdrop-blur-2xl z-[100] flex items-center justify-between px-6 border-b border-gray-100/50 safe-top">
            <div className="flex items-center gap-3 active:scale-95 transition-all cursor-pointer" onClick={() => setCurrentScreen('home')}>
@@ -364,14 +357,12 @@ const App: React.FC = () => {
         </header>
       )}
 
-      {/* Main Content Area */}
       <main className={`flex-1 flex flex-col relative overflow-hidden ${!isStandaloneScreen ? 'pt-24 lg:pt-0' : ''}`}>
         <div key={currentScreen} className="flex-1 w-full max-w-6xl mx-auto overflow-y-auto pb-32 lg:pb-8">
            {renderScreen()}
         </div>
       </main>
 
-      {/* GLOBAL BOTTOM NAV */}
       {!isStandaloneScreen && (
         <nav className="lg:hidden fixed bottom-8 left-6 right-6 bg-white/80 backdrop-blur-2xl px-2 py-4 rounded-[40px] shadow-xl shadow-[#A0C55F]/10 z-[100] border border-white/50 animate-in slide-in-from-bottom duration-700">
           <div className="flex justify-around items-center">
