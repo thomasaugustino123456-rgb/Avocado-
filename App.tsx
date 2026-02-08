@@ -16,7 +16,7 @@ import { ChatScreen } from './screens/Chat';
 import { Library } from './screens/Library';
 import { Landing } from './screens/Landing';
 import { Screen, User, DailyLog, Meal, LibraryItem, FoodAnalysis } from './types';
-import { Home as HomeIcon, PieChart, Plus, User as UserIcon, Calendar, Camera, MessageCircle, Library as LibraryIcon, Loader2, Cloud, CloudOff, Settings, Video, BellRing, X } from 'lucide-react';
+import { Home as HomeIcon, PieChart, Plus, User as UserIcon, Calendar, Camera, MessageCircle, Library as LibraryIcon, Loader2, Cloud, CloudOff, Settings, Video, BellRing, X, UserCircle, LayoutGrid } from 'lucide-react';
 import { audioService } from './services/audioService';
 
 const App: React.FC = () => {
@@ -62,14 +62,13 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Sync Messaging Token whenever profile is active with the REAL VAPID KEY
+  // Sync Messaging Token whenever profile is active
   useEffect(() => {
     const syncToken = async () => {
       if (messaging && userProfile && !isGuest) {
         try {
           const permission = await Notification.requestPermission();
           if (permission === 'granted') {
-            // Updated with User's Real VAPID Key
             const VAPID_KEY = 'BO0Rz9AB9uKWj7qtWWqcJUG3B0X8QRVe5WR40zS6NFVlNkVm5xu8G95ktzkVU9bkAiZ58K_2M7zS_LOjrDYCkEg';
             const token = await getToken(messaging, { vapidKey: VAPID_KEY });
             if (token) await persistenceService.saveMessagingToken(token);
@@ -81,28 +80,6 @@ const App: React.FC = () => {
     };
     syncToken();
   }, [userProfile, isGuest]);
-
-  // Smart Nudge Engine (Duolingo style local reminders)
-  useEffect(() => {
-    const nudgeInterval = setInterval(() => {
-      if (!userProfile?.settings?.notifications?.mealReminders) return;
-      
-      const now = new Date();
-      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-      const targetTime = userProfile.settings.notifications.reminderTime || '08:00';
-
-      // Trigger if time matches and user hasn't logged anything today
-      if (currentTime === targetTime && dailyLog.meals.length === 0) {
-        setActiveNotification({
-          title: "Bito misses you! 🥑",
-          body: "Your streak is at risk! Log your breakfast now to keep it alive. ✨"
-        });
-        audioService.playIce();
-      }
-    }, 60000);
-
-    return () => clearInterval(nudgeInterval);
-  }, [userProfile, dailyLog]);
 
   const refreshData = useCallback(async () => {
     if (!userProfile) return;
@@ -303,6 +280,7 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* Desktop Sidebar */}
       {!isStandaloneScreen && (
         <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-gray-100 p-8 z-50 shadow-sm animate-in slide-in-from-left duration-700">
           <div className="flex items-center gap-4 mb-12 px-2 cursor-pointer" onClick={() => setCurrentScreen('home')}>
@@ -332,14 +310,52 @@ const App: React.FC = () => {
         </aside>
       )}
 
-      <main className={`flex-1 flex flex-col relative overflow-hidden ${!isStandaloneScreen ? 'pt-20 lg:pt-0' : ''}`}>
+      {/* Global Mobile Header */}
+      {!isStandaloneScreen && (
+        <header className="lg:hidden fixed top-0 left-0 right-0 h-24 bg-white/70 backdrop-blur-2xl z-[100] flex items-center justify-between px-6 border-b border-gray-100/50 safe-top">
+           <div className="flex items-center gap-3 active:scale-95 transition-all cursor-pointer" onClick={() => setCurrentScreen('home')}>
+             <div className="w-11 h-11 bg-gradient-to-br from-[#A0C55F] to-[#8eb052] rounded-2xl flex items-center justify-center font-brand font-black text-white text-2xl shadow-lg shadow-[#A0C55F]/30 ring-4 ring-white">B</div>
+             <div className="flex flex-col">
+               <span className="font-brand font-black text-xl text-[#2F3E2E] leading-none">Bito</span>
+               <span className="text-[9px] font-black text-[#A0C55F] uppercase tracking-[0.2em] mt-1">Health Pro</span>
+             </div>
+           </div>
+
+           <div className="flex items-center gap-3">
+             <button onClick={() => setIsCreatorMode(!isCreatorMode)} className={`p-3 rounded-2xl transition-all border flex items-center gap-2 ${isCreatorMode ? 'bg-[#2F3E2E] text-white shadow-lg shadow-[#2F3E2E]/20 border-transparent' : 'bg-white/50 text-gray-300 border-gray-100'}`}>
+               <Video size={18} className={isCreatorMode ? 'text-red-500 animate-pulse' : ''} />
+             </button>
+
+             <button onClick={() => setCurrentScreen('library')} className={`p-3.5 rounded-2xl transition-all shadow-sm flex items-center justify-center relative ${currentScreen === 'library' ? 'bg-[#A0C55F] text-white shadow-lg shadow-[#A0C55F]/20' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}`}>
+               <LibraryIcon size={20} />
+               {libraryItems.length > 0 && currentScreen !== 'library' && (
+                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-sm" />
+               )}
+             </button>
+
+             <button onClick={() => setCurrentScreen('profile')} className={`w-12 h-12 rounded-2xl overflow-hidden transition-all flex items-center justify-center border-2 p-0.5 ${currentScreen === 'profile' ? 'bg-[#A0C55F] border-[#A0C55F] shadow-lg scale-105' : 'bg-white border-gray-100 shadow-sm active:scale-90'}`}>
+               <div className="w-full h-full bg-[#F8FAF5] rounded-[14px] flex items-center justify-center overflow-hidden">
+                 {userProfile?.profilePic ? (
+                   <img src={userProfile.profilePic} alt="Avatar" className="w-full h-full object-cover" />
+                 ) : (
+                   <UserCircle size={24} className={currentScreen === 'profile' ? 'text-white' : 'text-[#A0C55F]/50'} />
+                 )}
+               </div>
+             </button>
+           </div>
+        </header>
+      )}
+
+      {/* Main Content Area */}
+      <main className={`flex-1 flex flex-col relative overflow-hidden ${!isStandaloneScreen ? 'pt-24 lg:pt-0' : ''}`}>
         <div key={currentScreen} className="flex-1 w-full max-w-6xl mx-auto overflow-y-auto pb-32 lg:pb-8">
            {renderScreen()}
         </div>
       </main>
 
+      {/* GLOBAL BOTTOM NAV - BEAUTIFIED & MATCHED TO APP (RED MARKED AREA) */}
       {!isStandaloneScreen && (
-        <nav className="lg:hidden fixed bottom-6 left-4 right-4 bg-white/90 backdrop-blur-2xl px-2 py-3 rounded-[36px] shadow-2xl z-[100] border border-white/50 animate-in slide-in-from-bottom duration-700">
+        <nav className="lg:hidden fixed bottom-8 left-6 right-6 bg-white/80 backdrop-blur-2xl px-2 py-4 rounded-[40px] shadow-xl shadow-[#A0C55F]/10 z-[100] border border-white/50 animate-in slide-in-from-bottom duration-700">
           <div className="flex justify-around items-center">
             {[
               { s: 'home', i: HomeIcon, l: 'Home' },
@@ -348,9 +364,20 @@ const App: React.FC = () => {
               { s: 'scan_food', i: Camera, l: 'Scan' },
               { s: 'chat', i: MessageCircle, l: 'Chat' },
             ].map(({ s, i: Icon, l }) => (
-              <button key={s} onClick={() => setCurrentScreen(s as Screen)} className={`flex flex-col items-center justify-center gap-1 transition-all ${currentScreen === s ? 'text-[#A0C55F]' : 'text-gray-400'}`}>
-                <div className={`p-3 rounded-2xl ${currentScreen === s ? 'bg-[#A0C55F] text-white shadow-lg' : ''}`}><Icon size={22} /></div>
-                <span className="text-[9px] font-black uppercase tracking-tight">{l}</span>
+              <button 
+                key={s} 
+                onClick={() => {
+                   setCurrentScreen(s as Screen);
+                   audioService.playIce();
+                }} 
+                className={`flex flex-col items-center justify-center gap-1.5 transition-all group min-w-[64px] ${currentScreen === s ? 'text-[#A0C55F]' : 'text-[#2F3E2E]/40'}`}
+              >
+                <div className={`p-3.5 rounded-[22px] transition-all duration-300 ${currentScreen === s ? 'bg-[#A0C55F] text-white shadow-lg shadow-[#A0C55F]/30 -translate-y-2 scale-110' : 'bg-transparent active:scale-90 group-hover:bg-[#F8FAF5]'}`}>
+                  <Icon size={22} className={currentScreen === s ? 'animate-pulse' : 'group-hover:scale-110 transition-transform'} />
+                </div>
+                <span className={`text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${currentScreen === s ? 'text-[#2F3E2E] translate-y-[-2px] opacity-100' : 'opacity-40'}`}>
+                   {l}
+                </span>
               </button>
             ))}
           </div>
