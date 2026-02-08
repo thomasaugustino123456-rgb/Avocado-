@@ -1,4 +1,3 @@
-
 import { Share2, Download, Instagram, Facebook, X as CloseIcon, Smartphone, Camera as CameraIcon, Video, Wand2, Sparkles as SparklesIcon, PartyPopper, Smile, Loader2 } from 'lucide-react';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { User, DailyLog } from '../types';
@@ -245,8 +244,8 @@ export const Home: React.FC<HomeProps> = ({ user, dailyLog, streak, onUpdateWate
                  <button onClick={() => setShowShareCard(false)} className="absolute top-6 right-6 p-3 bg-white shadow-md rounded-2xl hover:bg-gray-50 transition-all z-10"><CloseIcon size={24} /></button>
                  
                  <div className="space-y-2 pt-4">
-                    <div className="flex items-center justify-center gap-2">
-                       <div className="w-8 h-8 bg-[#A0C55F] rounded-lg flex items-center justify-center font-brand font-black text-white text-sm">B</div>
+                    <div className="flex items-center justify-center gap-3">
+                       <Mascot size={32} mood="happy" />
                        <p className="text-[10px] font-black text-[#A0C55F] uppercase tracking-[0.4em]">Bito Daily Wins</p>
                     </div>
                     <h3 className="text-4xl font-brand font-bold text-[#2F3E2E] leading-tight tracking-tight">

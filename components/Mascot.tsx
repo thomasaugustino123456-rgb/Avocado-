@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export type MascotMood = 'idle' | 'happy' | 'little-happy' | 'typing' | 'error' | 'success' | 'petting' | 'annoyed' | 'angry' | 'very-angry';
@@ -10,135 +9,178 @@ interface MascotProps {
 }
 
 export const Mascot: React.FC<MascotProps> = ({ className = '', size = 120, mood = 'idle' }) => {
-  const isVeryAngry = mood === 'very-angry';
-  const isAngry = mood === 'angry' || isVeryAngry;
   const isSad = mood === 'error';
   const isHappy = mood === 'happy' || mood === 'success' || mood === 'petting' || mood === 'typing' || mood === 'little-happy';
+  const isAngry = mood === 'angry' || mood === 'very-angry';
+
+  // Dynamic values based on mood
+  const mouthPath = isSad 
+    ? "M 46 48 Q 50 44 54 48" // Frown
+    : isHappy 
+      ? "M 46 46 Q 50 50 54 46" // Smile
+      : "M 47 48 L 53 48"; // Flat line for idle
+
+  const leftEyeX = 42;
+  const rightEyeX = 58;
+  const eyeY = 40;
 
   return (
     <div className={`relative flex flex-col items-center select-none ${className}`}>
-      <div 
-        className={`relative transition-all duration-300 ${
+      <svg 
+        width={size} 
+        height={size * 1.1} 
+        viewBox="0 0 100 110" 
+        className={`transition-all duration-300 ${
           mood === 'typing' || mood === 'happy' ? 'animate-puppy-jump' : 
           mood === 'very-angry' ? 'animate-rage-shake' : 
-          mood === 'petting' ? 'animate-float' :
           'animate-float'
-        }`} 
-        style={{ width: size, height: size * 1.2 }}
+        }`}
       >
         {/* Shadow */}
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-2 bg-black/10 rounded-full blur-md" />
+        <ellipse cx="50" cy="102" rx="35" ry="5" fill="rgba(0,0,0,0.06)" />
 
-        {/* Body */}
-        <div 
-          className={`absolute inset-0 border-[3px] border-[#2F3E2E] shadow-xl transition-all duration-500 ${
-            isVeryAngry ? 'bg-red-600 scale-110' : 
-            mood === 'angry' ? 'bg-orange-500' :
-            mood === 'error' ? 'bg-blue-400' :
-            mood === 'petting' ? 'bg-[#A0C55F] scale-105' :
-            'bg-[#A0C55F]'
-          }`}
-          style={{ borderRadius: '50% 50% 45% 45%' }}
+        {/* Sparkles (Decorative) */}
+        {isHappy && (
+          <g className="animate-pulse">
+            <path d="M 15 35 L 17 37 L 15 39 L 13 37 Z" fill="#A0C55F" />
+            <path d="M 85 25 L 88 28 L 85 31 L 82 28 Z" fill="#A0C55F" />
+            <path d="M 20 65 L 22 67 L 20 69 L 18 67 Z" fill="#A0C55F" />
+            <path d="M 80 75 L 82 77 L 80 79 L 78 77 Z" fill="#A0C55F" />
+          </g>
+        )}
+
+        {/* Leaf on Top */}
+        <g transform="translate(60, 5) rotate(15)">
+           <path 
+            d="M 0 10 Q 5 0, 15 5 Q 10 15, 0 10" 
+            fill="#7d9e48" 
+            stroke="#2F3E2E" 
+            strokeWidth="2.5" 
+           />
+           <path d="M 0 10 L 10 7" stroke="#2F3E2E" strokeWidth="1.5" />
+        </g>
+
+        {/* Main Body (Rind) */}
+        <path 
+          d="M 50 10 C 25 10, 12 40, 12 70 C 12 95, 30 100, 50 100 C 70 100, 88 95, 88 70 C 88 40, 75 10, 50 10 Z" 
+          fill="#A0C55F" 
+          stroke="#2F3E2E" 
+          strokeWidth="3.5"
+          className="transition-colors duration-500"
+          style={{ fill: isAngry ? '#FFB347' : isSad ? '#93C5FD' : '#A0C55F' }}
         />
 
-        {/* Inner Face/Pit Area */}
-        <div 
-          className="absolute top-1.5 left-1.5 right-1.5 bottom-3.5 bg-[#DFF2C2] overflow-hidden transition-colors duration-500"
-          style={{ borderRadius: '50% 50% 45% 45%' }}
-        >
-          {/* Eyes container */}
-          <div className="absolute top-[30%] left-0 right-0 flex justify-around px-4">
-            {/* Left Eye */}
-            <div className="relative">
-              {isSad && (
-                <div className="absolute top-0 left-0 w-2 h-6 bg-blue-200/80 rounded-full animate-tear" />
-              )}
-              <div className={`w-2.5 h-2.5 bg-[#2F3E2E] rounded-full transition-all duration-300 ${
-                mood === 'petting' ? 'h-1 w-4 scale-x-150 rotate-[-10deg]' : 
-                isAngry ? 'h-1.5 w-4 -rotate-12 translate-y-1' : 
-                isSad ? 'h-4 w-1.5 rounded-t-full translate-y-1' : ''
-              }`} />
-            </div>
-            {/* Right Eye */}
-            <div className="relative">
-              {isSad && (
-                <div className="absolute top-0 right-0 w-2 h-6 bg-blue-200/80 rounded-full animate-tear delay-300" />
-              )}
-              <div className={`w-2.5 h-2.5 bg-[#2F3E2E] rounded-full transition-all duration-300 ${
-                mood === 'petting' ? 'h-1 w-4 scale-x-150 rotate-[10deg]' : 
-                isAngry ? 'h-1.5 w-4 rotate-12 translate-y-1' : 
-                isSad ? 'h-4 w-1.5 rounded-t-full translate-y-1' : ''
-              }`} />
-            </div>
-          </div>
-          
-          {/* Mouth */}
-          <div className={`absolute top-[48%] left-1/2 -translate-x-1/2 transition-all duration-300 ${
-            mood === 'petting' ? 'w-4 h-2 bg-red-400 rounded-full' :
-            isHappy ? 'w-6 h-3 border-b-[3px] border-[#2F3E2E] rounded-full' : 
-            isAngry ? 'w-4 h-1.5 bg-[#2F3E2E] rounded-full' : 
-            isSad ? 'w-4 h-3 border-t-[3px] border-[#2F3E2E] rounded-full' : 
-            'w-5 h-2 border-b-2 border-[#2F3E2E] rounded-full'
-          }`} />
-          
-          {/* The Pit (Nose) */}
-          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 w-10 h-10 bg-[#8B4513] rounded-full border-2 border-[#2F3E2E] shadow-inner transition-transform duration-700 ${
-            mood === 'typing' || mood === 'happy' ? 'animate-bounce' : ''
-          }`} />
+        {/* Inner Meat */}
+        <path 
+          d="M 50 15 C 30 15, 18 42, 18 68 C 18 92, 32 95, 50 95 C 68 95, 82 92, 82 68 C 82 42, 70 15, 50 15 Z" 
+          fill="#DFF2C2" 
+        />
 
-          {/* Petting Hearts Overlay */}
-          {mood === 'petting' && (
-             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-red-400 animate-heart-pop text-xl absolute top-4 left-4">♥</div>
-                <div className="text-red-300 animate-heart-pop text-lg absolute top-2 right-6 delay-150">♥</div>
-                <div className="text-red-500 animate-heart-pop text-sm absolute bottom-8 left-6 delay-300">♥</div>
-             </div>
-          )}
-        </div>
-      </div>
+        {/* Eyes */}
+        <g className="transition-all duration-300">
+          <circle 
+            cx={leftEyeX} 
+            cy={eyeY} 
+            r={isSad ? 1.5 : 2.5} 
+            fill="#2F3E2E" 
+          />
+          <circle 
+            cx={rightEyeX} 
+            cy={eyeY} 
+            r={isSad ? 1.5 : 2.5} 
+            fill="#2F3E2E" 
+          />
+        </g>
 
-      {/* Arms/Paws */}
-      <div className="flex gap-12 -mt-14 relative z-10">
-        <div className={`w-6 h-2.5 bg-[#A0C55F] rounded-full border-2 border-[#2F3E2E] transition-all duration-300 ${
-          mood === 'typing' ? '-rotate-90 -translate-y-4 translate-x-2' : 
-          mood === 'very-angry' ? 'rotate-180 -translate-y-1' : '-rotate-45'
-        }`} />
-        <div className={`w-6 h-2.5 bg-[#A0C55F] rounded-full border-2 border-[#2F3E2E] transition-all duration-300 ${
-          mood === 'typing' ? 'rotate-90 -translate-y-4 -translate-x-2' : 
-          mood === 'very-angry' ? 'rotate-180 -translate-y-1' : 'rotate-45'
-        }`} />
-      </div>
+        {/* Mouth */}
+        <path 
+          d={mouthPath} 
+          fill="none" 
+          stroke="#2F3E2E" 
+          strokeWidth="2.5" 
+          strokeLinecap="round" 
+          className="transition-all duration-300"
+        />
+
+        {/* The Pit (Seed) */}
+        <circle 
+          cx="50" 
+          cy="75" 
+          r="11" 
+          fill="#8B4513" 
+          stroke="#2F3E2E" 
+          strokeWidth="2.5" 
+          className={`transition-transform duration-700 ${mood === 'typing' ? 'animate-bounce' : ''}`}
+        />
+
+        {/* Tiny Arms Holding the Pit */}
+        <g>
+          {/* Left Arm */}
+          <path 
+            d="M 38 72 Q 42 75 42 75" 
+            fill="none" 
+            stroke="#2F3E2E" 
+            strokeWidth="3" 
+            strokeLinecap="round" 
+            className={mood === 'typing' ? 'animate-typing-L' : ''}
+          />
+          <circle cx="38" cy="72" r="2.5" fill="#A0C55F" stroke="#2F3E2E" strokeWidth="1.5" />
+          
+          {/* Right Arm */}
+          <path 
+            d="M 62 72 Q 58 75 58 75" 
+            fill="none" 
+            stroke="#2F3E2E" 
+            strokeWidth="3" 
+            strokeLinecap="round" 
+            className={mood === 'typing' ? 'animate-typing-R' : ''}
+          />
+          <circle cx="62" cy="72" r="2.5" fill="#A0C55F" stroke="#2F3E2E" strokeWidth="1.5" />
+        </g>
+
+        {/* Petting Hearts Overlay */}
+        {mood === 'petting' && (
+           <g className="animate-heart-pop">
+              <text x="20" y="30" fontSize="12" fill="#F87171">♥</text>
+              <text x="75" y="25" fontSize="10" fill="#F87171">♥</text>
+              <text x="45" y="15" fontSize="8" fill="#F87171">♥</text>
+           </g>
+        )}
+      </svg>
 
       <style>{`
         @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-8px) rotate(1deg); }
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
         }
         @keyframes puppy-jump {
           0%, 100% { transform: translateY(0) scaleY(1); }
-          50% { transform: translateY(-20px) scaleY(1.1) rotate(5deg); }
+          50% { transform: translateY(-18px) scaleY(1.05); }
         }
         @keyframes rage-shake {
           0%, 100% { transform: translate(0,0); }
-          20% { transform: translate(2px, 2px); }
-          40% { transform: translate(-2px, -2px); }
-          60% { transform: translate(2px, -2px); }
-          80% { transform: translate(-2px, 2px); }
+          25% { transform: translate(3px, 3px); }
+          75% { transform: translate(-3px, -3px); }
         }
-        @keyframes heart-pop {
-          0% { transform: scale(0) translateY(0); opacity: 0; }
-          50% { transform: scale(1.5) translateY(-10px); opacity: 1; }
-          100% { transform: scale(2) translateY(-25px); opacity: 0; }
+        @keyframes typing-L {
+          0%, 100% { transform: rotate(0) translateY(0); }
+          50% { transform: rotate(-10deg) translateY(-3px); }
         }
-        @keyframes tear {
-          0% { height: 0; opacity: 1; transform: translateY(0); }
-          100% { height: 18px; opacity: 0; transform: translateY(12px); }
+        @keyframes typing-R {
+          0%, 100% { transform: rotate(0) translateY(0); }
+          50% { transform: rotate(10deg) translateY(-3px); }
         }
-        .animate-puppy-jump { animation: puppy-jump 0.35s infinite ease-in-out; }
-        .animate-rage-shake { animation: rage-shake 0.1s infinite linear; }
+        .animate-puppy-jump { animation: puppy-jump 0.4s infinite ease-in-out; }
         .animate-float { animation: float 3s ease-in-out infinite; }
-        .animate-heart-pop { animation: heart-pop 0.8s ease-out forwards; }
-        .animate-tear { animation: tear 1.2s infinite linear; }
+        .animate-rage-shake { animation: rage-shake 0.1s infinite linear; }
+        .animate-typing-L { animation: typing-L 0.2s infinite; }
+        .animate-typing-R { animation: typing-R 0.2s infinite 0.1s; }
+        .animate-heart-pop { animation: float 1s infinite alternate; }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin 10s linear infinite; }
       `}</style>
     </div>
   );

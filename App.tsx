@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { persistenceService } from './services/persistenceService';
 import { auth, messaging } from './services/firebase';
@@ -18,6 +17,7 @@ import { Landing } from './screens/Landing';
 import { Screen, User, DailyLog, Meal, LibraryItem, FoodAnalysis } from './types';
 import { Home as HomeIcon, PieChart, Plus, User as UserIcon, Calendar, Camera, MessageCircle, Library as LibraryIcon, Loader2, Cloud, CloudOff, Settings, Video, BellRing, X, UserCircle, LayoutGrid } from 'lucide-react';
 import { audioService } from './services/audioService';
+import { Mascot } from './components/Mascot';
 
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -261,7 +261,7 @@ const App: React.FC = () => {
   if (isLoading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#F8FAF5] gap-6">
-        <div className="w-20 h-20 border-8 border-[#DFF2C2] border-t-[#A0C55F] rounded-full animate-spin" />
+        <Mascot size={100} mood="happy" />
         <p className="font-brand font-bold text-[#2F3E2E] animate-pulse text-xl">Waking up Bito...</p>
       </div>
     );
@@ -292,9 +292,11 @@ const App: React.FC = () => {
 
       {!isStandaloneScreen && (
         <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-gray-100 p-8 z-50 shadow-sm animate-in slide-in-from-left duration-700">
-          <div className="flex items-center gap-4 mb-12 px-2 cursor-pointer" onClick={() => setCurrentScreen('home')}>
-            <div className="w-12 h-12 bg-[#A0C55F] rounded-2xl flex items-center justify-center font-brand font-black text-white text-2xl shadow-lg">B</div>
-            <h1 className="text-2xl font-brand font-black text-[#2F3E2E]">Bito</h1>
+          <div className="flex items-center gap-3 mb-12 px-2 cursor-pointer group" onClick={() => setCurrentScreen('home')}>
+            <div className="transition-transform group-hover:scale-110">
+               <Mascot size={42} mood="happy" />
+            </div>
+            <h1 className="text-3xl font-brand font-black text-[#2F3E2E]">Bito</h1>
           </div>
           <nav className="flex-1 space-y-2">
             {[
@@ -321,8 +323,8 @@ const App: React.FC = () => {
 
       {!isStandaloneScreen && (
         <header className="lg:hidden fixed top-0 left-0 right-0 h-24 bg-white/70 backdrop-blur-2xl z-[100] flex items-center justify-between px-6 border-b border-gray-100/50 safe-top">
-           <div className="flex items-center gap-3 active:scale-95 transition-all cursor-pointer" onClick={() => setCurrentScreen('home')}>
-             <div className="w-11 h-11 bg-gradient-to-br from-[#A0C55F] to-[#8eb052] rounded-2xl flex items-center justify-center font-brand font-black text-white text-2xl shadow-lg shadow-[#A0C55F]/30 ring-4 ring-white">B</div>
+           <div className="flex items-center gap-2 active:scale-95 transition-all cursor-pointer" onClick={() => setCurrentScreen('home')}>
+             <Mascot size={40} mood="happy" />
              <div className="flex flex-col">
                <span className="font-brand font-black text-xl text-[#2F3E2E] leading-none">Bito</span>
                <span className="text-[9px] font-black text-[#A0C55F] uppercase tracking-[0.2em] mt-1">Health Pro</span>
