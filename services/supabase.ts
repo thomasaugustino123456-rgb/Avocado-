@@ -1,2 +1,5 @@
-// This file has been removed to resolve build conflicts. 
-// Bito currently uses Firebase for data persistence.
+/**
+ * This file is deprecated. 
+ * Bito uses Firebase for cloud persistence and Gemini for AI features.
+ */
+export {};
