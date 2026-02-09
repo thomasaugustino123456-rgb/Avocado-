@@ -1,4 +1,3 @@
-
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export interface Meal {
@@ -37,6 +36,7 @@ export interface User {
   dailyStepGoal: number;
   dailyWaterGoal: number;
   settings?: UserSettings;
+  totalTrophies?: number;
 }
 
 export interface DailyLog {

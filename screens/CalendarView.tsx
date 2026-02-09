@@ -1,11 +1,10 @@
-
 import React, { useState, useMemo } from 'react';
 import { TrophyStatus } from '../types';
 import { audioService } from '../services/audioService';
 import { 
   ChevronLeft, ChevronRight, Star, Snowflake, Sparkles, 
   ZapOff, Info, AlertTriangle, ShieldCheck, Trophy,
-  Zap, HeartCrack
+  Zap, HeartCrack, Flame
 } from 'lucide-react';
 
 interface CalendarViewProps {
@@ -15,26 +14,26 @@ interface CalendarViewProps {
 export const CalendarView: React.FC<CalendarViewProps> = ({ history = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  // Calculate Trophy Status based on history
+  // Calculate Trophy Status based on "Duolingo" decay logic
+  // Today Active -> Golden
+  // Missed Today but Yesterday Active -> Ice
+  // Missed 2+ Days -> Broken
   const status = useMemo((): TrophyStatus => {
-    if (!history || history.length === 0) return 'golden';
+    if (!history || history.length === 0) return 'broken';
 
-    // history[0] is today, history[1] is yesterday, etc.
-    let gap = 0;
-    let found = false;
+    // history[0] is most recent (usually today)
+    const todayLog = history[0];
+    const yesterdayLog = history[1];
 
-    for (let i = 0; i < history.length; i++) {
-      if (history[i].hasActivity) {
-        gap = i;
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) return 'broken'; 
-    if (gap <= 1) return 'golden'; 
-    if (gap <= 3) return 'ice'; 
+    if (todayLog?.hasActivity) return 'golden';
+    if (yesterdayLog?.hasActivity) return 'ice';
+    
     return 'broken'; 
+  }, [history]);
+
+  // Calculate total trophies earned in the current history view
+  const totalTrophiesEarned = useMemo(() => {
+    return history.filter(h => h.hasActivity).length;
   }, [history]);
 
   const playTrophySound = () => {
@@ -85,6 +84,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ history = [] }) => {
           status === 'golden' ? 'bg-yellow-400' : status === 'ice' ? 'bg-blue-400' : 'bg-gray-400'
         }`} />
 
+        {/* Trophy Display */}
         <div 
           className="relative cursor-pointer select-none z-10 p-10" 
           onClick={playTrophySound}
@@ -99,6 +99,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ history = [] }) => {
               <Sparkles className="absolute -top-6 -right-6 text-yellow-500 animate-bounce" size={48} />
               <Star className="absolute top-1/2 -left-16 text-yellow-300 animate-spin-slow" size={32} />
               <Star className="absolute bottom-0 -right-8 text-yellow-400 animate-pulse" size={24} />
+              
+              {/* Counter Badge */}
+              <div className="absolute -bottom-4 -right-4 bg-[#2F3E2E] text-white w-14 h-14 rounded-full flex items-center justify-center font-black text-xl border-4 border-white shadow-xl animate-pop-in">
+                 {totalTrophiesEarned}
+              </div>
             </div>
           )}
 
@@ -111,6 +116,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ history = [] }) => {
               <Snowflake className="absolute -top-4 -left-4 text-blue-300 animate-spin-slow" size={40} />
               <Snowflake className="absolute bottom-0 right-0 text-blue-200 animate-pulse" size={32} />
               <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-20 h-4 bg-blue-100/40 rounded-full blur-xl" />
+              
+              <div className="absolute -bottom-4 -right-4 bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center font-black text-lg border-4 border-white shadow-xl">
+                 {totalTrophiesEarned}
+              </div>
             </div>
           )}
 
@@ -126,6 +135,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ history = [] }) => {
               <HeartCrack className="absolute -top-6 -right-6 text-gray-400 animate-pulse" size={48} />
               <AlertTriangle className="absolute bottom-0 -left-8 text-red-400 animate-bounce" size={32} />
               <ZapOff className="absolute top-1/2 -right-16 text-gray-300 opacity-50" size={24} />
+              
+              <div className="absolute -bottom-4 -right-4 bg-gray-400 text-white w-12 h-12 rounded-full flex items-center justify-center font-black text-lg border-4 border-white shadow-xl">
+                 {totalTrophiesEarned}
+              </div>
             </div>
           )}
         </div>
@@ -137,20 +150,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ history = [] }) => {
                 status === 'golden' ? 'text-yellow-600' : 
                 status === 'ice' ? 'text-blue-500' : 'text-gray-500'
              }`}>
-                {status === 'golden' ? 'Unstoppable! 🏆' : 
-                 status === 'ice' ? 'Freezing Over... ❄️' : 'Streak Broken 💔'}
+                {status === 'golden' ? 'Glowing Gold! 🏆' : 
+                 status === 'ice' ? 'Freezing Over... 🧊' : 'Log your First Goal 💔'}
              </h3>
           </div>
           <p className="text-gray-500 text-xl font-medium max-w-lg mx-auto leading-relaxed">
-            {status === 'golden' ? "You're glowing! Your consistency is keeping Bito super happy. Keep this golden glow alive! ✨" : 
-             status === 'ice' ? "Brrr! It's getting cold. Don't let your health goals freeze up! One log today will bring the sun back. 🧊" : 
-             "Oh no! The streak has shattered. But don't worry—every day is a new chance to rebuild your masterpiece. Start today! 🥑"}
+            {status === 'golden' ? `You earned a new trophy today! You have ${totalTrophiesEarned} in your collection. Keep the fire burning! 🔥` : 
+             status === 'ice' ? "Watch out! You missed today. Your trophy has frozen into ice! Complete a mission now to turn it back to gold! 🥑✨" : 
+             "Your streak is broken! But don't worry—Bito believes in you. Log one thing today to start your new golden collection! 🚀"}
           </p>
           
           <div className="pt-4 flex flex-wrap justify-center gap-4">
              <div className="px-6 py-3 bg-white shadow-sm border border-gray-100 rounded-2xl flex items-center gap-3">
-                <ShieldCheck size={18} className={status === 'golden' ? 'text-[#A0C55F]' : 'text-gray-300'} />
-                <span className="text-xs font-black uppercase tracking-widest text-gray-400">Streak Guard {status === 'golden' ? 'Active' : 'Offline'}</span>
+                <Flame size={18} className={status === 'golden' ? 'text-[#A0C55F] animate-pulse' : 'text-gray-300'} />
+                <span className="text-xs font-black uppercase tracking-widest text-gray-400">Total Earned: {totalTrophiesEarned}</span>
              </div>
              <button 
                 onClick={playTrophySound}
@@ -159,7 +172,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ history = [] }) => {
                   status === 'ice' ? 'bg-blue-50 text-blue-600 shadow-blue-50/50' : 'bg-gray-100 text-gray-500 shadow-gray-100/50'
                 }`}
               >
-                Tap for sound
+                Check Status Sound
              </button>
           </div>
         </div>
@@ -173,7 +186,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ history = [] }) => {
           </div>
           <div className="flex items-center gap-3 bg-[#F8FAF5] px-6 py-3 rounded-[24px] border border-gray-100">
              <Info size={16} className="text-[#A0C55F]" />
-             <span className="text-sm font-bold text-[#2F3E2E]">Your active days are marked with green</span>
+             <span className="text-sm font-bold text-[#2F3E2E]">Active days earn you 1 Golden Trophy</span>
           </div>
         </div>
 
@@ -240,12 +253,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ history = [] }) => {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        @keyframes pop-in {
+          0% { transform: scale(0); opacity: 0; }
+          70% { transform: scale(1.2); }
+          100% { transform: scale(1); opacity: 1; }
+        }
         .animate-shimmer { animation: shimmer 3s infinite linear; }
         .animate-float { animation: float 4s infinite ease-in-out; }
         .animate-glow-blue { animation: glow-blue 2.5s infinite ease-in-out; }
         .animate-shiver { animation: shiver 0.2s infinite linear; }
         .animate-shatter-jolt { animation: shatter-jolt 3s infinite ease-in-out; }
         .animate-spin-slow { animation: spin-slow 15s linear infinite; }
+        .animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
       `}</style>
     </div>
   );
